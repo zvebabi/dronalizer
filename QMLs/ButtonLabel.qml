@@ -7,7 +7,7 @@ Text {
 //    font.bold: true
 //    font.pixelSize: parent.height * .34
     font.family: "DejaVu Sans Mono"
-    font.pixelSize: 25*app.dp
+    font.pixelSize: app.fontPixelSize
 //    color: "white"
     text: "Button"
 }

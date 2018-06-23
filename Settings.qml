@@ -58,18 +58,16 @@ Item {
         timer.triggered.connect(cb);
         timer.start();
     }
-    Grid{
-        columns: 2
-        spacing: 50*app.dp
-//        anchors.fill: parent
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.topMargin: 100*app.dp
-        anchors.top: parent.top
+    RowLayout{
+        anchors.fill: parent
+        anchors.margins: statusBar.height + 10*app.dp
+        anchors.topMargin: menuBar.height + 10*app.dp
         Column {
             id: deviceSetter
             spacing: 5*app.dp
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.rightMargin: 50*app.dp
+            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+            Layout.minimumWidth: deviceSetter.itemsWidth * 1.1
+            Layout.fillHeight: true
             property int itemsWidth: 250*app.dp
             Button {
                 id: listDeviceBTN
@@ -81,7 +79,6 @@ Item {
                 }
 //                height: 150*app.dp
             }
-
             ComboBox {
                 id: portsComboList
                 objectName: "comboList"
@@ -92,20 +89,29 @@ Item {
                 }
 
             }
-
             Button {
                 id: connectBTN
                 contentItem: ButtonLabel {text: qsTr("Connect")}
                 width: deviceSetter.itemsWidth
                 onClicked: {
-                    reciever.initDevice(portsComboList.currentText);
-//                    app.ctmLegendVisibility = false;
+                    reciever.initDevice(portsComboList.currentText
+                                      , currentDeviceSetting.propertyName
+                                        , currentDeviceSetting.values);
+                }
+            }
+            Button {
+                id: sendCoeffsBTN
+                contentItem: ButtonLabel {text: qsTr("Send settings")}
+                width: deviceSetter.itemsWidth
+                onClicked: {
+                    reciever.updateProperties(currentDeviceSetting.propertyName
+                                            , currentDeviceSetting.values)
                 }
             }
             Label {
                 text: qsTr("Save images and data to: ")
                 font.family: "DejaVu Sans Mono"
-                font.pixelSize: 22*app.dp
+                font.pixelSize: app.fontPixelSize
                 visible: false
             }
             TextField {
@@ -114,7 +120,7 @@ Item {
                 width: deviceSetter.itemsWidth
                 text:reciever.getDataPath()
                 font.family: "DejaVu Sans Mono"
-                font.pixelSize: 22*app.dp
+                font.pixelSize: app.fontPixelSize
                 readOnly: true
                 selectByMouse: true
                 MouseArea {
@@ -154,141 +160,74 @@ Item {
                 }
                 onClicked: fileDialog.open()
             }
+        }
+        Rectangle {
+            id: currentDeviceSetting
+            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+            color: "transparent"
+//            Layout.preferredHeight: deviceSetter.height
+            Layout.minimumHeight: 350*app.dp
+            Layout.fillHeight: true
+            Layout.minimumWidth: 400 *app.dp
+            property var values: ["1", "1.0", "1.0", "1.0", "1.0"]
+            property var propertyName:["set_m","cal_a","cal_b","cal_c","cal_n"]
+            ListModel{
+                id: propertiesModel
+                ListElement { name: qsTr("set_m") }
+                ListElement { name: qsTr("cal_a") }
+                ListElement { name: qsTr("cal_b") }
+                ListElement { name: qsTr("cal_c") }
+                ListElement { name: qsTr("cal_n") }
+            }
+            ListView {
+                id: propertiesView
+                width: 180; height: 200
+                anchors.left: parent.left
+                anchors.top: parent.top
+                model: propertiesModel
+                delegate: RowLayout {
+                    spacing: 5*app.dp
+                    Text {
+                        Layout.preferredWidth: 70* app.dp
+                        Layout.alignment: Qt.AlignBottom
+                        Layout.bottomMargin: 23 * app.dp
+                        text: name
+                        font.pixelSize: app.fontPixelSize}
+                    TextField {
+                        Layout.alignment: Qt.AlignBottom
+                        text: currentDeviceSetting.values[index]
+                        inputMask: index == 0 ? "dd;_" : "9.9dddd;_"
+                        placeholderText: placeHolderText
+                        font.pixelSize: app.fontPixelSize
+                        onEditingFinished: {
+                            currentDeviceSetting.values[index] = text;
+                            currentDeviceSetting.propertyName[index] = name;
+                            //TODO: check correctnes of input
+                        }
+                    }
+                }
+            }
 
-//            CheckBox {
-//                id:serviceMode
-//                text: qsTr("Save raw data")
-//                checked: app.serviceMode
-//                onClicked: {
-//                    reciever.setServiceMode(checked)
-//                    app.serviceMode = checked
-//                }
-//            }
-//            CheckBox {
-//                id:cumulativeMeasurements
-//                text: qsTr("Cumulative mode")
-//                checked: app.cumulativeMode
-//                onClicked: {
-//                    reciever.setCumulativeMode(checked)
-//                    app.cumulativeMode = checked
-//                }
-//            }
-//            CheckBox {
-//                id:antialiasingManual
-//                text: qsTr("Enable antialiasing")
-//                checked: app.aaManual
-//                onClicked: {
-//                    reciever.enableAAManual(checked)
-//                    app.aaManual = checked
-//                }
-//            }
-//            RadioButton {
-//                id:name1
-//                checked: true
-//                text: qsTr("Absorbance")
-//                onClicked: {
-//                    app.yAxisName = name1.text
-//                }
-//            }
-//            RadioButton {
-//                id:name2
-//                checked: false
-//                text: qsTr("Transmittance")
-//                onClicked: {
-//                    app.yAxisName = name2.text
-//                }
-//            }
+    //information
+            ColumnLayout{
+                anchors.bottom: parent.bottom
+                anchors.topMargin: 10*app.dp
+                Label {
+                    id: pathLbl_h
+                    font.pixelSize: app.fontPixelSize
+                    text: qsTr("Measurement data storage directory: ")
+                }
+                Label {
+                    id: pathLbl
+                    font.pixelSize: app.fontPixelSize
+                    text: filePathText.text
+                }
+                Label {
+                    id: pathLbl_f
+                    font.pixelSize: app.fontPixelSize
+                    text: qsTr("Click \"Save data to…\" to choose another location")
+                }
+            }
         }
-
-    }
-//    Column {
-    Rectangle {
-        id: currentDeviceSetting
-//            spacing: 5*app.dp
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: statusBar.height + 10*app.dp
-        anchors.left: parent.left
-        anchors.leftMargin: anchors.bottomMargin
-
-        color: palette.darkPrimary
-        height: 350*app.dp
-        width: 400 *app.dp
-        Label {
-            text: qsTr("cal_a");
-            width: 100*app.dp
-            anchors.right: cal_a.left
-//            anchors.left: parent.left
-            anchors.verticalCenter: cal_a.verticalCenter
-        }
-        TextField {
-            id:cal_a
-            anchors.right: parent.right
-            anchors.bottom: cal_b.top
-            placeholderText: qsTr("Enter cal_a")
-        }
-
-        Label {
-            text: qsTr("cal_b")
-            anchors.right: cal_a.left
-            anchors.left: parent.left
-            anchors.verticalCenter: cal_b.verticalCenter
-        }
-        TextField {
-            id: cal_b
-            anchors.bottom: cal_c.top
-            placeholderText: qsTr("Enter cal_b")
-        }
-
-        Label { text: qsTr("cal_c")
-            anchors.right: cal_a.left
-            anchors.left: parent.left
-            anchors.verticalCenter: cal_c.verticalCenter
-        }
-        TextField {
-            id: cal_c
-            anchors.bottom: cal_n.top
-            placeholderText: qsTr("Enter cal_c")
-        }
-
-        Label { text: qsTr("cal_n")
-            anchors.right: cal_a.left
-            anchors.left: parent.left
-            anchors.verticalCenter: cal_n.verticalCenter
-        }
-        TextField {
-            id: cal_n
-            anchors.bottom: set_m.top
-            placeholderText: qsTr("Enter cal_n")
-        }
-
-        Label {
-            text: qsTr("set_m")
-            anchors.right: cal_a.left
-            anchors.left: parent.left
-            anchors.verticalCenter: set_m.verticalCenter
-        }
-        TextField {
-            id: set_m
-            anchors.bottom: pathLbl_h.top
-            placeholderText: qsTr("1-20")
-        }
-//information
-        Label {
-            id: pathLbl_h
-            anchors.bottom: pathLbl.top
-            anchors.left: parent.left
-            text: qsTr("Measurement data storage directory: ")
-        }
-        Label {
-            id: pathLbl
-            anchors.bottom: pathLbl_f.top
-            anchors.left: parent.left
-            text: filePathText.text
-        }
-        Label {
-            id: pathLbl_f
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            text: qsTr("Click \"Save data to…\" to choose another location") }
     }
 }

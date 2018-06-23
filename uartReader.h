@@ -35,7 +35,11 @@ public:
     explicit uartReader(QObject *parent = 0);
     ~uartReader();
 public slots:
-    void initDevice(QString port);
+    void initDevice(QString port,
+                    QVariantList propertiesNames_,
+                    QVariantList propertiesValues_);
+    void updateProperties(QVariantList propertiesNames_,
+                          QVariantList propertiesValues_);
     void getListOfPort();
     QString getDataPath() {return documentsPath;}
     void readData();

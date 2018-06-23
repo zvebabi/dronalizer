@@ -26,8 +26,13 @@ uartReader::~uartReader()
     }
 }
 
-void uartReader::initDevice(QString port)
+void uartReader::initDevice(QString port,
+                            QVariantList propertiesNames_,
+                            QVariantList propertiesValues_)
 {
+#if 1
+    updateProperties(propertiesNames_, propertiesValues_);
+#else
     device->setPortName(port);
     device->setBaudRate(QSerialPort::Baud115200);
     device->setDataBits(QSerialPort::Data8);
@@ -41,10 +46,39 @@ void uartReader::initDevice(QString port)
         device->setRequestToSend(false);
 //        while( serNumber == -1 ) {};
         emit sendDebugInfo("Connected to: " + device->portName());
+        updateProperties(properties_);
     }
     else {
         qDebug() << "Can't open port" << port;
         emit sendDebugInfo("Can't open port" + port, 2000);
+    }
+#endif
+}
+
+void uartReader::updateProperties(QVariantList propertiesNames_,
+                                  QVariantList propertiesValues_)
+{
+//    qDebug() << properties_;
+    //parse properties
+    QString command;
+    //send period
+    command = QString("%1=%2$\r").arg(propertiesNames_[0].toString())
+                                 .arg(propertiesValues_[0].toInt(), 2,10, QChar('0'));
+    qDebug() << command;
+
+    for(int i=1; i< propertiesValues_.size(); i++)
+    {
+        double koef_1=0.0, koef_2=0.0;
+        koef_2 = std::modf(propertiesValues_[i].toDouble(), &koef_1);
+        int k1 = koef_1;
+        int k2 = koef_2 * 100000;
+
+        command = QString("%1=%2.%3$\r").arg(propertiesNames_[i].toString())
+                                     .arg(k1)
+                                     .arg(QString::number(k2).leftJustified(5,QChar('0')));
+        qDebug() << command;
+        //TODO: implement sleepFlag and separate write method
+//        device->write(command);
     }
 }
 

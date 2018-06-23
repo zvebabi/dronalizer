@@ -13,6 +13,7 @@ ApplicationWindow {
     property string appTitle: "Dronalizer"
     property string appVersion: "0.1"
     property alias dp: device.dp
+    property real fontPixelSize: 22*app.dp
     visible: true
     width: 960
     height: 540
