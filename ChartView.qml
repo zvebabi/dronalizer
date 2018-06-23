@@ -28,28 +28,24 @@ Item {
         }
     }
 
-    RowLayout {
-        spacing: 1
+    ColumnLayout {
+        spacing: 10*app.dp
+        anchors.top: menuBar.bottom
         anchors.fill: parent
-        anchors.margins: 10
-        Column {
+        anchors.margins: 10*app.dp
+        anchors.topMargin: menuBar.height+10*app.dp
+        ColumnLayout {
             id: colForSnap
             spacing:0
-            anchors.fill: parent
-//            anchors.margins: 10
             Rectangle {
-                width: parent.width - editBar.itemWidth
-                height: app.height - 1.5*app.menuBarHeight
-                anchors.right: editBar.left
-                anchors.left: parent.left
-                anchors.top: parent.top - app.menuBarHeight
-
+                color: "#333"
+                Layout.fillHeight: true
+                Layout.fillWidth: true
                 ChartView {
                     id: graphs
                     anchors.fill: parent
                     antialiasing: true
                     legend.visible: false
-                    visible: mainMenu.currentItem == 0 ? true : false // 0 - line
                     property int numSeries : 0 //current number of graphs
                     property real minRngX: 0.0
                     property real maxRngX: 0.0
@@ -102,23 +98,19 @@ Item {
                     Layout.minimumHeight: 240
                 }
             }
-            CustomLegend {
-                id: customLegend
-//                visible: app.ctmLegendVisibility
-                width: parent.width - editBar.itemWidth
-                height: app.menuBarHeight
-//                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.right: editBar.left
-                anchors.left: parent.left
-                anchors.top: graphs.bottom
-//                onEntered: chartViewSelector.highlightSeries(seriesName);
-//                onExited: chartViewSelector.highlightSeries("");
-//                onSelected: chartViewSelector.selectSeries(seriesName);
-            }
+//            CustomLegend {
+//                id: customLegend
+//                visible: true
+//                Layout.fillWidth: true
+//                Layout.preferredHeight: app.menuBarHeight
+////                onEntered: chartViewSelector.highlightSeries(seriesName);
+////                onExited: chartViewSelector.highlightSeries("");
+////                onSelected: chartViewSelector.selectSeries(seriesName);
+//            }
         }
         ChartViewEditBar {
             id: editBar
-            anchors.right: parent.right
+            Layout.alignment: Qt.AlignHCenter |Qt.AlignBottom
 
         }
 

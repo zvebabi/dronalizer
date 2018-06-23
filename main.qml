@@ -174,7 +174,7 @@ ApplicationWindow {
 
     Component.onCompleted: {
 //        currentPage = "Settings.qml"
-        mainMenu.currentItem = 1
+        mainMenu.currentItem = 0
     }
     SwipeView {
         id: view

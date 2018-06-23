@@ -5,83 +5,46 @@ import QtCharts 2.2
 import QtQuick.Dialogs 1.2
 import QtGraphicalEffects 1.0
 
-
-Column {
+RowLayout {
     id: ctrlPane
-    spacing: 3
-    property int itemWidth: 150*app.dp
+    spacing: 10*app.dp
+    property int itemWidth: 250*app.dp
     Connections {
         target: reciever
         onMakeSeries: {
             createSeries()
         }
     }
-    Rectangle
-    {
-        id: mainBtnHolder
-        width: ctrlPane.itemWidth
-        height: 120*app.dp
-        anchors.top:  parent.top - app.menuBarHeight
-        color: "transparent"
-        Grid {
-            id : chartEditMenu2
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            columns: 1
-            spacing: 20
-            ToolButton {
-                id: enableFlyMode
-                enabled: true
-                height: 2.3*48*app.dp
-                width: height
-                ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Enable fly mode")
-                Image {
-                    id: rAa
-                    anchors.centerIn: parent
-                    width: parent.width
-                    height: width
-                    source: "qrc:/images/runAnalizer.png"
-                    antialiasing: true
-                    smooth: true
-                }
-                ColorOverlay {
-                    anchors.fill: rAa
-                    source: rAa
-                    color: "#d000ff00"
-                }
-                onClicked: {
-                    createSeries()
-                }
-            }
-            ToolButton {
-                id: setZeroLevel
-                height: 2.3*48*app.dp
-                width: height
-                ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Set zero lavel")
-                Image {
-                    id: rAe
-                    anchors.centerIn: parent
-                    width: parent.width
-                    height: width
-                    source: "qrc:/images/runCalibration.png"
-                    antialiasing: true
-                    smooth: true
-                }
-
-                ColorOverlay {
-                    anchors.fill: rAe
-                    source: rAe
-                    color: "#80ff0000"
-                }
-                onClicked: {
-                    reciever.doMeasurements(graphs.series(seriesName),true);
-                }
-            }
+    Button {
+        id: enableFlyMode
+        enabled: true
+//                height: 2.3*24*app.dp
+        width: 250*app.dp
+        contentItem: ButtonLabel {text: qsTr("Fly mode")}
+//                ToolTip.visible: hovered
+//                    ToolTip.text: qsTr("Enable fly mode")
+        onClicked: {
+            createSeries()
         }
     }
-
+    Button {
+        id: setZeroLevel
+//                height: 2.3*48*app.dp
+        width: 250*app.dp
+//                ToolTip.visible: hovered
+//                    ToolTip.text: qsTr("Set zero level")
+        contentItem: ButtonLabel {text: qsTr("Set zero level")}
+        onClicked: {
+            reciever.doMeasurements(graphs.series(seriesName),true);
+        }
+    }
+    Switch {
+        text: qsTr("Debug mode")
+        onClicked: {
+            //TODO: send a signal to reciever to switch between DEBUG/WORK mode
+            console.log("position: " + position)
+        }
+    }
     function createSeries() {
         var colorList = [
                     "#F44336", "#673AB7", "#03A9F4", "#4CAF50", "#FFEB3B", "#FF5722",
