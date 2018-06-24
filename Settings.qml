@@ -89,14 +89,33 @@ Item {
                 }
 
             }
+            ComboBox {
+                id: baudRateComboList
+                objectName: "comboList"
+                model: availableBaudRate
+                width: deviceSetter.itemsWidth
+                currentIndex: 3
+                ListModel{
+                    id: availableBaudRate
+                        ListElement{ text: "1200"   }
+                        ListElement{ text: "2400"   }
+                        ListElement{ text: "4800"   }
+                        ListElement{ text: "9600"   }
+                        ListElement{ text: "19200"  }
+                        ListElement{ text: "38400"  }
+                        ListElement{ text: "57600"  }
+                        ListElement{ text: "115200" }
+                }
+            }
             Button {
                 id: connectBTN
                 contentItem: ButtonLabel {text: qsTr("Connect")}
                 width: deviceSetter.itemsWidth
                 onClicked: {
                     reciever.initDevice(portsComboList.currentText
+                                      , baudRateComboList.currentText
                                       , currentDeviceSetting.propertyName
-                                        , currentDeviceSetting.values);
+                                      , currentDeviceSetting.values);
                 }
             }
             Button {

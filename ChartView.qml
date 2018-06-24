@@ -38,11 +38,12 @@ Item {
             id: colForSnap
             spacing:0
             Rectangle {
-                color: "#333"
+                color: "transparent"
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 ChartView {
                     id: graphs
+                    visible: true
                     anchors.fill: parent
                     antialiasing: true
                     legend.visible: false
@@ -55,8 +56,8 @@ Item {
                         id: axisX
                         objectName: "axisX"
                         titleText: qsTr("Wavelength(um)")
-                        min: 0
-                        max: 0
+                        min: 410
+                        max: 500
                         tickCount: 13
                         minorTickCount: 3
                         labelFormat: "%.1f"
@@ -66,7 +67,7 @@ Item {
                         objectName: "axisY"
 //                        titleText: app.yAxisName
                         min: 0
-                        max:0
+                        max:2
                         tickCount: 5
                         minorTickCount: 4
                     }
@@ -92,10 +93,29 @@ Item {
                             }
                         }
                     }
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.minimumWidth: 320
-                    Layout.minimumHeight: 240
+                }
+                ListView {
+                    z:1
+                    id: textData
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.margins: 100*app.dp
+                    height: app.fontPixelSize * 1.5 * count
+                    width: parent.width - 20*app.dp
+                    model: availableData
+                    delegate: Text {
+                        text: data_
+                        color: palette.darkPrimary
+                        opacity: 0.7
+                        font.pixelSize: app.fontPixelSize
+                    }
+                    ListModel {
+                        id: availableData
+                        ListElement { data_: qsTr("testElement0")}
+                        ListElement { data_: qsTr("testElement1")}
+                        ListElement { data_: qsTr("testElement2")}
+                        ListElement { data_: qsTr("testElement3")}
+                    }
                 }
             }
 //            CustomLegend {

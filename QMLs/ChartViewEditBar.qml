@@ -16,7 +16,7 @@ RowLayout {
         }
     }
     Button {
-        id: enableFlyMode
+        id: enableFlyModeBTN
         enabled: true
 //                height: 2.3*24*app.dp
         width: 250*app.dp
@@ -25,24 +25,33 @@ RowLayout {
 //                    ToolTip.text: qsTr("Enable fly mode")
         onClicked: {
             createSeries()
+            reciever.readData()
+//            reciever.prepareCommandToSend("duty\r")
         }
     }
     Button {
-        id: setZeroLevel
+        id: setZeroLevelBTN
 //                height: 2.3*48*app.dp
         width: 250*app.dp
 //                ToolTip.visible: hovered
 //                    ToolTip.text: qsTr("Set zero level")
         contentItem: ButtonLabel {text: qsTr("Set zero level")}
         onClicked: {
-            reciever.doMeasurements(graphs.series(seriesName),true);
+            reciever.prepareCommandToSend("zero\r")
         }
     }
     Switch {
+        id: debugModeSwitcher
         text: qsTr("Debug mode")
         onClicked: {
             //TODO: send a signal to reciever to switch between DEBUG/WORK mode
             console.log("position: " + position)
+            if (position == 1) {
+                reciever.prepareCommandToSend("Log=debug\r")
+            }
+            else {
+                reciever.prepareCommandToSend("Log=work\r")
+            }
         }
     }
     function createSeries() {
@@ -52,28 +61,13 @@ RowLayout {
                     "#9C27B0", "#2196F3", "#009688", "#CDDC39", "#FF9800"
                 ]
         graphs.numSeries++;
-        var seriesName = qsTr(graphs.numSeries + "_"
-                            + lineLabel.text)
+        var seriesName = qsTr("series_" + graphs.numSeries)
         graphs.createSeries(ChartView.SeriesTypeLine,
                             seriesName,
                             axisX, axisY);
-//        reciever.doMeasurements(graphs.series(seriesName));
         graphs.series(seriesName).color = colorList[
                     Math.random()*100*( graphs.numSeries - 1) % colorList.length ]//"#B71C1C"
-//dotted series start
-//        var seriesNameDotted = qsTr(seriesName + "_dotted")
-//        var series = graphs.createSeries(ChartView.SeriesTypeScatter,
-//                            seriesNameDotted,
-//                            axisX, axisY);
-////        graphs.legend.markers(series)[0].setVisible(false);
-//        series.color = graphs.series(seriesName).color;
-//        series.markerSize = 7;
-//        customLegend.addSeries(seriesName,series.color)
-//dotted series end
-        reciever.doMeasurements(graphs.series(seriesName), false, graphs.series(seriesNameDotted));
-        tableModel.append({
-           "name": seriesName,
-           "isChecked": true,
-           "seriesColor": graphs.series(seriesName).color.toString() })
+
+        reciever.sendSeriesPointer(graphs.series(seriesName),graphs.axisX(seriesName));
     }
 }

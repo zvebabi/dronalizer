@@ -1,11 +1,12 @@
 #include "uartReader.h"
 #include <QtMath>
+#include <thread>
+#include <chrono>
 #include <memory>
 
 uartReader::uartReader(QObject *parent) : QObject(parent),
     firstLine(true), serviceMode(false), isPortOpen(false),
-    m_serNumber(-1)
-
+    m_serNumber(-1), deviceInSleepMode(false)
 {
     qRegisterMetaType<QtCharts::QAbstractSeries*>();
     qRegisterMetaType<QtCharts::QAbstractAxis*>();
@@ -26,15 +27,18 @@ uartReader::~uartReader()
     }
 }
 
-void uartReader::initDevice(QString port,
+void uartReader::initDevice(QString port, QString baudRate,
                             QVariantList propertiesNames_,
                             QVariantList propertiesValues_)
 {
 #if 1
+    qDebug() << "Selected port: " << port;
+    qDebug() << "Selected baudRate: " << baudRate;
+    emit makeSeries();
     updateProperties(propertiesNames_, propertiesValues_);
 #else
     device->setPortName(port);
-    device->setBaudRate(QSerialPort::Baud115200);
+    device->setBaudRate(baudRate.toInt());
     device->setDataBits(QSerialPort::Data8);
     device->setParity(QSerialPort::NoParity);
     device->setStopBits(QSerialPort::OneStop);
@@ -46,7 +50,8 @@ void uartReader::initDevice(QString port,
         device->setRequestToSend(false);
 //        while( serNumber == -1 ) {};
         emit sendDebugInfo("Connected to: " + device->portName());
-        updateProperties(properties_);
+        emit makeSeries();
+        updateProperties(propertiesNames_, propertiesValues_);
     }
     else {
         qDebug() << "Can't open port" << port;
@@ -62,10 +67,11 @@ void uartReader::updateProperties(QVariantList propertiesNames_,
     //parse properties
     QString command;
     //send period
-    command = QString("%1=%2$\r").arg(propertiesNames_[0].toString())
+    command = QString("%1=%2\r").arg(propertiesNames_[0].toString())
                                  .arg(propertiesValues_[0].toInt(), 2,10, QChar('0'));
-    qDebug() << command;
-
+    qDebug() << "updateProperties: " + command;
+    prepareCommandToSend(command);
+    //send coeffs
     for(int i=1; i< propertiesValues_.size(); i++)
     {
         double koef_1=0.0, koef_2=0.0;
@@ -73,10 +79,11 @@ void uartReader::updateProperties(QVariantList propertiesNames_,
         int k1 = koef_1;
         int k2 = koef_2 * 100000;
 
-        command = QString("%1=%2.%3$\r").arg(propertiesNames_[i].toString())
+        command = QString("%1=%2.%3\r").arg(propertiesNames_[i].toString())
                                      .arg(k1)
                                      .arg(QString::number(k2).leftJustified(5,QChar('0')));
-        qDebug() << command;
+        prepareCommandToSend(command);
+        qDebug() << "updateProperties: " + command;
         //TODO: implement sleepFlag and separate write method
 //        device->write(command);
     }
@@ -98,14 +105,64 @@ void uartReader::getListOfPort()
 void uartReader::readData()
 {
     qDebug() << "in readdata";
+    //manually readData from file
+#if 1
+    std::thread( [&] () {
+        QFile input("D:/projects/ascii.log");
+        if( !input.open(QIODevice::ReadOnly | QIODevice::Text) )
+        {
+            qDebug() << "Cannot open file!";
+            return;
+        }
+        int numLinesReaded=0;
+        while(!input.atEnd() || numLinesReaded < 10 )
+        {
+            auto t1 = std::chrono::high_resolution_clock::now();
+            deviceInSleepMode=false;
+            processLine(input.readLine());
+            if(++numLinesReaded %4 ==0)
+            {
+                auto t2 = std::chrono::high_resolution_clock::now();
+                std::chrono::milliseconds delay(1000);
+                std::chrono::milliseconds delaySleepMode(100);
+                while( (std::chrono::duration<double, std::milli>(t2 - t1) < delay) )
+                {
+                    t2 = std::chrono::high_resolution_clock::now();
+                    if (std::chrono::duration<double, std::milli>(t2 - t1) > delaySleepMode)
+                        deviceInSleepMode=true;
+                }
+            }
+        }
+    });
+#else
     while (device->canReadLine()) processLine(device->readLine());
+#endif
 }
 
-void uartReader::doMeasurements()
+void uartReader::prepareCommandToSend(QString cmd_)
 {
-    emit sendDebugInfo("Start measurement");
-    qDebug() << "doMeasurements";
+    qDebug() << "prepareCommandToSend: " + cmd_;
+    if (cmd_.length()>0)
+        queueCommandsToSend.push_back(cmd_);
+    if(!deviceInSleepMode) { sendDataToDevice(); } //immediately send command
+//    if (m_series) {
+//        QtCharts::QXYSeries *xySeries =
+//                static_cast<QtCharts::QXYSeries *>(m_series);
+//        static std::chrono::high_resolution_clock::time_point t =
+//                std::chrono::high_resolution_clock::now();
+//        auto t1 = std::chrono::high_resolution_clock::now();
+//        int diffTime = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t).count();
+//        xySeries->append(diffTime,diffTime/2);
+//    }
+}
 
+void uartReader::sendSeriesPointer(QtCharts::QAbstractSeries* series_
+                                  , QtCharts::QAbstractAxis* Xaxis_)
+{
+    qDebug() << "sendSeriesPointer: " << series_;
+    m_series = series_;
+    m_axisX = Xaxis_;
+    qDebug() << "sendSeriesPointer: " << m_series;
 //    if(serviceMode)
 //        device->write("d");
 //    else
@@ -120,28 +177,74 @@ void uartReader::selectPath(QString pathForSave)
     qDebug() << documentsPath;
 }
 
-void uartReader::update(QtCharts::QAbstractSeries *series)
+void uartReader::sendDataToDevice()
 {
-    if (series) {
+    if(/*device->isOpen() && */!deviceInSleepMode)
+        while (!queueCommandsToSend.empty())
+        {
+            QString cmd_ = queueCommandsToSend[0];
+//            device->write(cmd_.toStdString().c_str());
+            queueCommandsToSend.pop_front();
+            emit sendDebugInfo(QString("Send: ") + cmd_);
+            qDebug() << "sendDataToDevice: " + cmd_;
+        }
+    else
+    {
+        emit sendDebugInfo("Device disconnected or in measurement mode");
+    }
+}
+
+void uartReader::update(QPointF p)
+{
+    if (m_series) {
         QtCharts::QXYSeries *xySeries =
-                static_cast<QtCharts::QXYSeries *>(series);
+                static_cast<QtCharts::QXYSeries *>(m_series);
 //        QVector<QPointF> points = lines.value(series);
         // Use replace instead of clear + append, it's optimized for performance
-//        xySeries->append();//replace(lines.value(series));
-        qDebug() << "//TODO: append data to series";
+        xySeries->append(p);//replace(lines.value(series));
+//        qDebug() << "//TODO: append data to series";
     }
-    emit sendDebugInfo("Done");
+    if(m_axisX) {
+        m_axisX->setMin(p.rx()-20);
+        m_axisX->setMax(p.rx());
+    }
+//    emit sendDebugInfo("Done");
 }
 
 void uartReader::processLine(const QByteArray &_line)
 {
 //    QByteArray line = device->readAll();
-    qDebug() << _line;
+//    qDebug() << _line;
     QStringList line;//(_line);
     for (auto w : _line.split(','))
     {
         line.append(QString(w));
     }
+    //appendDataToseries/writeTofile
+    QRegExp concRX("^C=*");
+    QRegExp timeRX("^time=*");
+    QRegExp endMsgRX("^---*");
+    if(line.size()==1)
+    {
+        QPointF p;
+        //TODO:get conc and time
+        if( timeRX.indexIn(line.first()) >= 0)
+            tempPoint.setX(line.first().right(line.first().length()-5).toInt());
+//            qDebug() << "Match Time " << line.first().right(line.first().length()-5).toInt();
+
+        if( concRX.indexIn(line.first()) >= 0)
+            tempPoint.setY(line.first().right(9).toDouble());
+//            qDebug() << "Match conc " << line.first().right(9).toDouble();
+
+        if( endMsgRX.indexIn(line.first()) >= 0)
+            update(tempPoint);
+//            qDebug() << tempPoint;
+    }
+    else
+    {
+        //TODO:work with voltage data
+    }
+
 //identity
     if( line.first().compare("x=i") ==0)
         identityHandler(line);

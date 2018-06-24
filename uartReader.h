@@ -35,7 +35,7 @@ public:
     explicit uartReader(QObject *parent = 0);
     ~uartReader();
 public slots:
-    void initDevice(QString port,
+    void initDevice(QString port, QString baudRate,
                     QVariantList propertiesNames_,
                     QVariantList propertiesValues_);
     void updateProperties(QVariantList propertiesNames_,
@@ -43,8 +43,9 @@ public slots:
     void getListOfPort();
     QString getDataPath() {return documentsPath;}
     void readData();
-
-    void doMeasurements();
+    void prepareCommandToSend(QString cmd_);
+    void sendSeriesPointer(QtCharts::QAbstractSeries *series_,
+                           QtCharts::QAbstractAxis *Xaxis_);
     void selectPath(QString pathForSave);
 
 signals:
@@ -54,7 +55,9 @@ signals:
     void makeSeries(); // run 1 time on startup
     void disableButton();
 private:
-    void update(QtCharts::QAbstractSeries *series);
+    void sendDataToDevice();
+    QPointF tempPoint;
+    void update(QPointF p);
     void processLine(const QByteArray& line);
     void serviceModeHandler(const QStringList& line);
     void identityHandler(const QStringList& line);
@@ -65,10 +68,12 @@ private:
     std::vector<QString> ports;
 
     QSerialPort* device = NULL;
-    QSerialPort::BaudRate baudRate;
-
+    QtCharts::QAbstractSeries *m_series;
+    QtCharts::QAbstractAxis *m_axisX;
     int m_serNumber;
     bool isPortOpen, firstLine, serviceMode;
+    bool deviceInSleepMode;
+    QVector<QString> queueCommandsToSend;
 
     QString documentsPath;
     std::ofstream diagnosticLog;
