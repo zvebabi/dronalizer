@@ -26,7 +26,7 @@
 #include <fstream>
 #include <sstream>
 #include <ctime>
-
+#include <memory>
 
 class uartReader : public QObject
 {
@@ -54,9 +54,11 @@ signals:
     void sendSerialNumber(QString serNumber);
     void makeSeries(); // run 1 time on startup
     void disableButton();
+    void adjustAxis(QPointF axisYRange_);
 private:
     void sendDataToDevice();
     QPointF tempPoint;
+    QPointF axisYRange; //x-min, y - max
     void update(QPointF p);
     void processLine(const QByteArray& line);
     void serviceModeHandler(const QStringList& line);
@@ -71,9 +73,10 @@ private:
     QtCharts::QAbstractSeries *m_series;
     QtCharts::QAbstractAxis *m_axisX;
     int m_serNumber;
+    std::shared_ptr<QFile> logFile;
     bool isPortOpen, firstLine, serviceMode;
-    bool deviceInSleepMode;
-    QVector<QString> queueCommandsToSend;
+    std::atomic_bool deviceInSleepMode;
+    QVector<QString> m_queueCommandsToSend;
 
     QString documentsPath;
     std::ofstream diagnosticLog;

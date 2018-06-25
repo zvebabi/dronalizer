@@ -163,6 +163,7 @@ Item {
                 id: selectPath
                 contentItem:  ButtonLabel {text:qsTr("Save data to…")}
                 width: deviceSetter.itemsWidth
+                visible: false
                 FileDialog {
                     id: fileDialog
                     title: qsTr("Select directory")

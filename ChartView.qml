@@ -13,15 +13,8 @@ Item {
     Connections {
         target: reciever
         onAdjustAxis: {
-            graphs.minRngX = (Math.floor((minRng.x - (maxRng.x-minRng.x)*0.02)*10))/10
-            graphs.maxRngX = (Math.ceil((maxRng.x + (maxRng.x-minRng.x)*0.02)*10))/10
-            graphs.minRngY = minRng.y - (maxRng.y-minRng.y)*0.1
-            graphs.maxRngY = maxRng.y
-            axisX.min = graphs.minRngX
-            axisX.max = graphs.maxRngX
-            axisY.min = 0
-            axisY.max = graphs.maxRngY*1.1
-
+            axisY.min = axisYRange_.x
+            axisY.max = axisYRange_.y
         }
         onSendDebugInfo: {
             showPopupTips(qsTr(data), time)
@@ -111,10 +104,10 @@ Item {
                     }
                     ListModel {
                         id: availableData
-                        ListElement { data_: qsTr("testElement0")}
-                        ListElement { data_: qsTr("testElement1")}
-                        ListElement { data_: qsTr("testElement2")}
-                        ListElement { data_: qsTr("testElement3")}
+//                        ListElement { data_: qsTr("testElement0")}
+//                        ListElement { data_: qsTr("testElement1")}
+//                        ListElement { data_: qsTr("testElement2")}
+//                        ListElement { data_: qsTr("testElement3")}
                     }
                 }
             }

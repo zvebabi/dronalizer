@@ -24,9 +24,9 @@ RowLayout {
 //                ToolTip.visible: hovered
 //                    ToolTip.text: qsTr("Enable fly mode")
         onClicked: {
-            createSeries()
-            reciever.readData()
-//            reciever.prepareCommandToSend("duty\r")
+//            createSeries()
+//            reciever.readData()
+            reciever.prepareCommandToSend("duty\r")
         }
     }
     Button {
