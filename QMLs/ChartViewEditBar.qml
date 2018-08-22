@@ -24,6 +24,7 @@ RowLayout {
 //                ToolTip.visible: hovered
 //                    ToolTip.text: qsTr("Enable fly mode")
         onClicked: {
+            //debug
 //            createSeries()
 //            reciever.readData()
             reciever.prepareCommandToSend("duty\r")
@@ -60,14 +61,42 @@ RowLayout {
                     "#E91E63", "#3F51B5", "#00BCD4", "#8BC34A", "#FFC107",
                     "#9C27B0", "#2196F3", "#009688", "#CDDC39", "#FF9800"
                 ]
-        graphs.numSeries++;
-        var seriesName = qsTr("series_" + graphs.numSeries)
-        graphs.createSeries(ChartView.SeriesTypeLine,
+        //Umeas
+        graph_Umeas.numSeries++;
+        var seriesName = qsTr("series_" + graph_Umeas.numSeries)
+        graph_Umeas.createSeries(ChartView.SeriesTypeLine,
                             seriesName,
-                            axisX, axisY);
-        graphs.series(seriesName).color = colorList[
-                    Math.random()*100*( graphs.numSeries - 1) % colorList.length ]//"#B71C1C"
+                            axisX_Umeas, axisY_Umeas);
+        graph_Umeas.series(seriesName).color = /*colorList[
+                    Math.random()*100*( graph_Umeas.numSeries - 1) % colorList.length ]*/"#B71C1C"
+        reciever.sendSeriesPointer(graph_Umeas.series(seriesName),graph_Umeas.axisX(seriesName));
+        //U_ref
+        graph_Uref.numSeries++;
+        seriesName = qsTr("series_" + graph_Uref.numSeries)
+        graph_Uref.createSeries(ChartView.SeriesTypeLine,
+                            seriesName,
+                            axisX_Uref, axisY_Uref);
+        graph_Uref.series(seriesName).color = /*colorList[
+                    Math.random()*100*( graph_Uref.numSeries - 1) % colorList.length ]*/"#B71C1C"
+        reciever.sendSeriesPointer(graph_Uref.series(seriesName),graph_Uref.axisX(seriesName));
+        //U_pn
+        graph_Upn.numSeries++;
+        seriesName = qsTr("series_" + graph_Upn.numSeries)
+        graph_Upn.createSeries(ChartView.SeriesTypeLine,
+                            seriesName,
+                            axisX_Upn, axisY_Upn);
+        graph_Upn.series(seriesName).color = /*colorList[
+                    Math.random()*100*( graph_Upn.numSeries - 1) % colorList.length ]*/"#B71C1C"
+        reciever.sendSeriesPointer(graph_Upn.series(seriesName),graph_Upn.axisX(seriesName));
+        //Conc
+        graph_C.numSeries++;
+        seriesName = qsTr("series_" + graph_C.numSeries)
+        graph_C.createSeries(ChartView.SeriesTypeLine,
+                            seriesName,
+                            axisX_C, axisY_C);
+        graph_C.series(seriesName).color = /*colorList[
+                    Math.random()*100*( graph_C.numSeries - 1) % colorList.length ]*/"#B71C1C"
+        reciever.sendSeriesPointer(graph_C.series(seriesName),graph_C.axisX(seriesName));
 
-        reciever.sendSeriesPointer(graphs.series(seriesName),graphs.axisX(seriesName));
     }
 }

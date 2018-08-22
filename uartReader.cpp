@@ -15,7 +15,9 @@ uartReader::uartReader(QObject *parent) : QObject(parent),
     documentsPath = QDir::homePath()+QString("/Documents/");
     device = new QSerialPort(this);
     connect(device, &QSerialPort::readyRead, this, &uartReader::readData);
-    axisYRange = QPointF(100000,0);
+    axisYRange.resize(4);
+    for(auto p : axisYRange)
+        p = QPointF(100000,0);
 }
 
 uartReader::~uartReader()
@@ -161,9 +163,9 @@ void uartReader::sendSeriesPointer(QtCharts::QAbstractSeries* series_
                                   , QtCharts::QAbstractAxis* Xaxis_)
 {
     qDebug() << "sendSeriesPointer: " << series_;
-    m_series = series_;
-    m_axisX = Xaxis_;
-    qDebug() << "sendSeriesPointer: " << m_series;
+    m_series.push_back(series_);
+    m_axisX.push_back(Xaxis_);
+    qDebug() << "getSeriesPointer: " << *m_series.rbegin();
 }
 
 void uartReader::selectPath(QString pathForSave)
@@ -197,17 +199,17 @@ void uartReader::sendDataToDevice()
     }
 }
 
-void uartReader::update(QPointF p)
+void uartReader::update(int graphIdx, QPointF p)
 {
-    if (m_series) {
+    if (m_series[graphIdx]) {
         QtCharts::QXYSeries *xySeries =
-                static_cast<QtCharts::QXYSeries *>(m_series);
+                static_cast<QtCharts::QXYSeries *>(m_series[graphIdx]);
         // Use replace instead of clear + append, it's optimized for performance
         xySeries->append(p);//replace(lines.value(series));
     }
-    if(m_axisX) {
-        m_axisX->setMin(p.rx()-180);
-        m_axisX->setMax(p.rx());
+    if(m_axisX[graphIdx]) {
+        m_axisX[graphIdx]->setMin(p.rx()-180);
+        m_axisX[graphIdx]->setMax(p.rx());
     }
 }
 
@@ -237,12 +239,12 @@ void uartReader::processLine(const QByteArray &_line)
         {
             deviceInSleepMode = false;
             tempPoint.setY(line.first().right(9).toDouble());
-            if( tempPoint.y() < axisYRange.x())
-                axisYRange.setX(tempPoint.y());
-            if( tempPoint.y() > axisYRange.y())
-                axisYRange.setY(tempPoint.y());
+            if( tempPoint.y() < axisYRange[3].x())
+                axisYRange[3].setX(tempPoint.y());
+            if( tempPoint.y() > axisYRange[3].y())
+                axisYRange[3].setY(tempPoint.y());
 //            qDebug() << "Match conc " << line.first().right(9).toDouble();
-            emit adjustAxis(axisYRange);
+//            emit adjustAxis(axisYRange);
         }
 
         if( endMsgRX.indexIn(line.first()) >= 0)
@@ -260,7 +262,7 @@ void uartReader::processLine(const QByteArray &_line)
             //TODO:send to device
             if(!m_queueCommandsToSend.empty())
                 sendDataToDevice();
-            update(tempPoint);
+            update(3, tempPoint); //update conc
             delayThread.join();
         }
 //            qDebug() << tempPoint;
@@ -268,6 +270,48 @@ void uartReader::processLine(const QByteArray &_line)
     else
     {
         //TODO:work with voltage data
+        QRegExp uMeasRX("^u_meas=*");
+        QRegExp uRefRX("^u_ref=*");
+        QRegExp uPnRX("^u_d=*");
+        for (QString val : line)
+        {
+            if( uMeasRX.indexIn(val) >= 0)
+            {
+                tempPoint.setY(val.right(8).toDouble());
+                if( tempPoint.y() < axisYRange[0].x())
+                    axisYRange[0].setX(tempPoint.y());
+                if( tempPoint.y() > axisYRange[0].y())
+                    axisYRange[0].setY(tempPoint.y());
+    //            qDebug() << "Match umeas " << val.right(8).toDouble();
+                update(0, tempPoint); //update conc
+//                emit adjustAxis(axisYRange);
+            }
+            if( uRefRX.indexIn(val) >= 0)
+            {
+                tempPoint.setY(val.right(8).toDouble());
+                if( tempPoint.y() < axisYRange[1].x())
+                    axisYRange[1].setX(tempPoint.y());
+                if( tempPoint.y() > axisYRange[1].y())
+                    axisYRange[1].setY(tempPoint.y());
+    //            qDebug() << "Match uref " << val.right(8).toDouble();
+                update(1, tempPoint); //update conc
+//                emit adjustAxis(axisYRange);
+            }
+            if( uPnRX.indexIn(val) >= 0)
+            {
+                tempPoint.setY(val.right(8).toDouble());
+                if( tempPoint.y() < axisYRange[2].x())
+                    axisYRange[2].setX(tempPoint.y());
+                if( tempPoint.y() > axisYRange[2].y())
+                    axisYRange[2].setY(tempPoint.y());
+    //            qDebug() << "Match upn " << val.right(8).toDouble();
+                update(2, tempPoint); //update conc
+                emit adjustAxis(axisYRange[0]
+                               ,axisYRange[1]
+                               ,axisYRange[2]
+                               ,axisYRange[3] );
+            }
+        }
     }
 
 //identity

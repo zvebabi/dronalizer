@@ -54,12 +54,15 @@ signals:
     void sendSerialNumber(QString serNumber);
     void makeSeries(); // run 1 time on startup
     void disableButton();
-    void adjustAxis(QPointF axisYRange_);
+    void adjustAxis(QPointF axisYRange_Umeas
+                   ,QPointF axisYRange_Uref
+                   ,QPointF axisYRange_Upn
+                   ,QPointF axisYRange_C);
 private:
     void sendDataToDevice();
     QPointF tempPoint;
-    QPointF axisYRange; //x-min, y - max
-    void update(QPointF p);
+    QVector<QPointF> axisYRange; //x-min, y - max
+    void update(int graphIdx, QPointF p);
     void processLine(const QByteArray& line);
     void serviceModeHandler(const QStringList& line);
     void identityHandler(const QStringList& line);
@@ -70,8 +73,8 @@ private:
     std::vector<QString> ports;
 
     QSerialPort* device = NULL;
-    QtCharts::QAbstractSeries *m_series;
-    QtCharts::QAbstractAxis *m_axisX;
+    QVector<QtCharts::QAbstractSeries *>m_series;
+    QVector<QtCharts::QAbstractAxis *>m_axisX;
     int m_serNumber;
     std::shared_ptr<QFile> logFile;
     bool isPortOpen, firstLine, serviceMode;
