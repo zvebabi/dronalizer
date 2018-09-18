@@ -8,7 +8,7 @@
 
 uartReader::uartReader(QObject *parent) : QObject(parent),
     firstLine(true), serviceMode(false), isPortOpen(false),
-    m_serNumber(-1), deviceInSleepMode(false)
+    m_serNumber(-1), deviceInSleepMode(false), m_flyMode(false)
 {
     qRegisterMetaType<QtCharts::QAbstractSeries*>();
     qRegisterMetaType<QtCharts::QAbstractAxis*>();
@@ -16,8 +16,14 @@ uartReader::uartReader(QObject *parent) : QObject(parent),
     device = new QSerialPort(this);
     connect(device, &QSerialPort::readyRead, this, &uartReader::readData);
     axisYRange.resize(4);
-    for(auto p : axisYRange)
-        p = QPointF(100000,0);
+    tempPoint.resize(4);
+    for (auto& p: tempPoint)
+    {
+        p.setX(0.0);
+        p.setY(0.0);
+    }
+    for(auto& p : axisYRange)
+        p = QPointF(100000,-100000);
 }
 
 uartReader::~uartReader()
@@ -215,7 +221,9 @@ void uartReader::update(int graphIdx, QPointF p)
 
 void uartReader::processLine(const QByteArray &_line)
 {
-//    qDebug() << _line;
+    qDebug() << _line;
+    if (!m_flyMode)
+        return;
     QStringList line;//(_line);
     logFile->write(_line);
 
@@ -225,29 +233,32 @@ void uartReader::processLine(const QByteArray &_line)
     }
     //appendDataToseries/writeTofile
     QRegExp concRX("^C=*");
-    QRegExp timeRX("^time=*");
     QRegExp endMsgRX("^---*");
     if(line.size()==1)
     {
-        QPointF p;
-        //TODO:get conc and time
-        if( timeRX.indexIn(line.first()) >= 0)
-            tempPoint.setX(line.first().right(line.first().length()-5).toInt());
-//            qDebug() << "Match Time " << line.first().right(line.first().length()-5).toInt();
+        QStringList pairOfvalue;
+        for (auto w : line.first().split('='))
+            pairOfvalue.append(QString(w));
 
-        if( concRX.indexIn(line.first()) >= 0)
+        if(pairOfvalue.size()==2 && pairOfvalue.first().compare("time") == 0 )
+        {
+            for (auto& p: tempPoint)
+                p.setX(pairOfvalue[1].toInt());
+//            qDebug() << "Match Time " << pairOfvalue[1].toInt() <<"\n";
+        }
+        if(pairOfvalue.size()==2 && pairOfvalue.first().compare("C") == 0 )
         {
             deviceInSleepMode = false;
-            tempPoint.setY(line.first().right(9).toDouble());
-            if( tempPoint.y() < axisYRange[3].x())
-                axisYRange[3].setX(tempPoint.y());
-            if( tempPoint.y() > axisYRange[3].y())
-                axisYRange[3].setY(tempPoint.y());
-//            qDebug() << "Match conc " << line.first().right(9).toDouble();
+            tempPoint[3].setY(pairOfvalue[1].toDouble());
+            if( tempPoint[3].y() < axisYRange[3].x())
+                axisYRange[3].setX(tempPoint[3].y());
+            if( tempPoint[3].y() > axisYRange[3].y())
+                axisYRange[3].setY(tempPoint[3].y());
+//            qDebug() << "Match conc " << pairOfvalue[1].toDouble();
 //            emit adjustAxis(axisYRange);
         }
 
-        if( endMsgRX.indexIn(line.first()) >= 0)
+        if( pairOfvalue.size()==1) //end of packet line "-------"
         {
             auto t1 = std::chrono::high_resolution_clock::now();
             std::chrono::milliseconds delaySleepMode(100);
@@ -259,13 +270,20 @@ void uartReader::processLine(const QByteArray &_line)
                 }
                 deviceInSleepMode=true;
             });
-            //TODO:send to device
+
             if(!m_queueCommandsToSend.empty())
                 sendDataToDevice();
-            update(3, tempPoint); //update conc
+            update(0, tempPoint[0]); //update meas
+            update(1, tempPoint[1]); //update ref
+            update(2, tempPoint[2]); //update pn
+            update(3, tempPoint[3]); //update conc
+            emit adjustAxis(axisYRange[0]
+                           ,axisYRange[1]
+                           ,axisYRange[2]
+                           ,axisYRange[3] );
+            qDebug() << "temppoint: " <<  tempPoint;
             delayThread.join();
         }
-//            qDebug() << tempPoint;
     }
     else
     {
@@ -273,43 +291,65 @@ void uartReader::processLine(const QByteArray &_line)
         QRegExp uMeasRX("^u_meas=*");
         QRegExp uRefRX("^u_ref=*");
         QRegExp uPnRX("^u_d=*");
-        for (QString val : line)
+        qDebug() << "line size: "<<line.size();
+        for (auto val : line)
         {
-            if( uMeasRX.indexIn(val) >= 0)
+            QStringList pairOfvalueU;
+            for (auto w : val.split('='))
+                pairOfvalueU.append(QString(w));
+
+//            if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare("u_meas") == 0 )
+//            {
+//                qDebug()<< "u_meas=" << pairOfvalueU[1];
+//            }
+//            else if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare(" u_ref") == 0 )
+//            {
+//                qDebug() << "u_ref=" << pairOfvalueU[1];
+//            }
+//            else if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare(" u_d") == 0 )
+//            {
+//                qDebug() << "u_d=" << pairOfvalueU[1];
+//            }
+
+            if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare("u_meas") == 0 )
             {
-                tempPoint.setY(val.right(8).toDouble());
-                if( tempPoint.y() < axisYRange[0].x())
-                    axisYRange[0].setX(tempPoint.y());
-                if( tempPoint.y() > axisYRange[0].y())
-                    axisYRange[0].setY(tempPoint.y());
-    //            qDebug() << "Match umeas " << val.right(8).toDouble();
-                update(0, tempPoint); //update conc
+                tempPoint[0].setY(pairOfvalueU[1].toDouble());
+                if( tempPoint[0].y() < axisYRange[0].x())
+                    axisYRange[0].setX(tempPoint[0].y());
+                if( tempPoint[0].y() > axisYRange[0].y())
+                    axisYRange[0].setY(tempPoint[0].y());
+                qDebug() << "Match umeas " << val.right(8).toDouble();
+//                update(0, tempPoint[0]); //update conc
 //                emit adjustAxis(axisYRange);
             }
-            if( uRefRX.indexIn(val) >= 0)
+            else if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare(" u_ref") == 0 )
             {
-                tempPoint.setY(val.right(8).toDouble());
-                if( tempPoint.y() < axisYRange[1].x())
-                    axisYRange[1].setX(tempPoint.y());
-                if( tempPoint.y() > axisYRange[1].y())
-                    axisYRange[1].setY(tempPoint.y());
-    //            qDebug() << "Match uref " << val.right(8).toDouble();
-                update(1, tempPoint); //update conc
+//                if (val.right(3).compare("nan"))
+//                    qDebug() << "val is nan";
+                tempPoint[1].setY(pairOfvalueU[1].toDouble());
+                if( tempPoint[1].y() < axisYRange[1].x())
+                    axisYRange[1].setX(tempPoint[1].y());
+                if( tempPoint[1].y() > axisYRange[1].y())
+                    axisYRange[1].setY(tempPoint[1].y());
+                qDebug() << "Match uref " << val.right(8).toDouble();
+//                update(1, tempPoint[1]); //update conc
 //                emit adjustAxis(axisYRange);
             }
-            if( uPnRX.indexIn(val) >= 0)
+            else if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare(" u_d") == 0 )
             {
-                tempPoint.setY(val.right(8).toDouble());
-                if( tempPoint.y() < axisYRange[2].x())
-                    axisYRange[2].setX(tempPoint.y());
-                if( tempPoint.y() > axisYRange[2].y())
-                    axisYRange[2].setY(tempPoint.y());
-    //            qDebug() << "Match upn " << val.right(8).toDouble();
-                update(2, tempPoint); //update conc
-                emit adjustAxis(axisYRange[0]
-                               ,axisYRange[1]
-                               ,axisYRange[2]
-                               ,axisYRange[3] );
+//                if (val.right(3).compare("nan"))
+//                    qDebug() << "val is nan";
+                tempPoint[2].setY(pairOfvalueU[1].toDouble());
+                if( tempPoint[2].y() < axisYRange[2].x())
+                    axisYRange[2].setX(tempPoint[2].y());
+                if( tempPoint[2].y() > axisYRange[2].y())
+                    axisYRange[2].setY(tempPoint[2].y());
+                qDebug() << "Match upn " << val.right(8).toDouble();
+//                update(2, tempPoint[2]); //update conc
+//                emit adjustAxis(axisYRange[0]
+//                               ,axisYRange[1]
+//                               ,axisYRange[2]
+//                               ,axisYRange[3] );
             }
         }
     }

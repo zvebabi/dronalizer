@@ -44,6 +44,9 @@ public slots:
     QString getDataPath() {return documentsPath;}
     void readData();
     void prepareCommandToSend(QString cmd_);
+    void setFlyMode(bool mode){
+        m_flyMode = mode;
+    }
     void sendSeriesPointer(QtCharts::QAbstractSeries *series_,
                            QtCharts::QAbstractAxis *Xaxis_);
     void selectPath(QString pathForSave);
@@ -60,7 +63,10 @@ signals:
                    ,QPointF axisYRange_C);
 private:
     void sendDataToDevice();
-    QPointF tempPoint;
+    QVector<QPointF> tempPoint;  //0-meas
+                                 //1-ref
+                                 //2-pn
+                                 //3-C,
     QVector<QPointF> axisYRange; //x-min, y - max
     void update(int graphIdx, QPointF p);
     void processLine(const QByteArray& line);
@@ -76,6 +82,7 @@ private:
     QVector<QtCharts::QAbstractSeries *>m_series;
     QVector<QtCharts::QAbstractAxis *>m_axisX;
     int m_serNumber;
+    bool m_flyMode;
     std::shared_ptr<QFile> logFile;
     bool isPortOpen, firstLine, serviceMode;
     std::atomic_bool deviceInSleepMode;

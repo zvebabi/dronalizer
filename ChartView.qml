@@ -56,6 +56,7 @@ Item {
                     property real maxRngY: 0.0
                     ValueAxis {
                         id: axisX_Umeas
+                        visible:false
                         objectName: "axisX_Umeas"
                         titleText: qsTr("Time")
                         min: 410
@@ -68,8 +69,8 @@ Item {
                         id: axisY_Umeas
                         objectName: "axisY_Umeas"
 //                        titleText: app.yAxisName
-                        min: 0
-                        max:2
+                        min: 0.9
+                        max:1.1
                         tickCount: 5
                         minorTickCount: 4
                     }
@@ -114,6 +115,7 @@ Item {
                     property real maxRngY: 0.0
                     ValueAxis {
                         id: axisX_Uref
+                        visible:false
                         objectName: "axisX_Uref"
                         titleText: qsTr("Time")
                         min: 410
@@ -126,8 +128,8 @@ Item {
                         id: axisY_Uref
                         objectName: "axisY_Uref"
 //                        titleText: app.yAxisName
-                        min: 0
-                        max:2
+                        min: 0.9
+                        max:1.1
                         tickCount: 5
                         minorTickCount: 4
                     }
@@ -172,6 +174,7 @@ Item {
                     property real maxRngY: 0.0
                     ValueAxis {
                         id: axisX_Upn
+                        visible: false
                         objectName: "axisX_Upn"
                         titleText: qsTr("Time")
                         min: 410
@@ -184,8 +187,8 @@ Item {
                         id: axisY_Upn
                         objectName: "axisY_Upn"
 //                        titleText: app.yAxisName
-                        min: 0
-                        max:2
+                        min: 0.9
+                        max:1.1
                         tickCount: 5
                         minorTickCount: 4
                     }
@@ -231,7 +234,7 @@ Item {
                     ValueAxis {
                         id: axisX_C
                         objectName: "axisX_C"
-                        titleText: qsTr("Wavelength(um)")
+                        titleText: qsTr("Time")
                         min: 410
                         max: 500
                         tickCount: 13
@@ -242,8 +245,8 @@ Item {
                         id: axisY_C
                         objectName: "axisY_C"
 //                        titleText: app.yAxisName
-                        min: 0
-                        max:2
+                        min: 0.025
+                        max: 0.035
                         tickCount: 5
                         minorTickCount: 4
                     }

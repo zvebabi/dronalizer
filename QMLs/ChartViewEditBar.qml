@@ -28,6 +28,7 @@ RowLayout {
 //            createSeries()
 //            reciever.readData()
             reciever.prepareCommandToSend("duty\r")
+            reciever.setFlyMode(true)
         }
     }
     Button {
@@ -48,10 +49,12 @@ RowLayout {
             //TODO: send a signal to reciever to switch between DEBUG/WORK mode
             console.log("position: " + position)
             if (position == 1) {
-                reciever.prepareCommandToSend("Log=debug\r")
+                reciever.prepareCommandToSend("debug\r")
+                reciever.setFlyMode(False)
             }
             else {
-                reciever.prepareCommandToSend("Log=work\r")
+                reciever.prepareCommandToSend("work\r")
+                reciever.setFlyMode(True)
             }
         }
     }
