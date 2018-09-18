@@ -50,11 +50,11 @@ RowLayout {
             console.log("position: " + position)
             if (position == 1) {
                 reciever.prepareCommandToSend("debug\r")
-                reciever.setFlyMode(False)
+                reciever.setFlyMode(false)
             }
             else {
                 reciever.prepareCommandToSend("work\r")
-                reciever.setFlyMode(True)
+                reciever.setFlyMode(true)
             }
         }
     }
