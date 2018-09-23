@@ -16,7 +16,8 @@ SOURCES += main.cpp \
 
 HEADERS += \
     mydevice.h \
-    uartReader.h
+    uartReader.h \
+    statistic.h
 
 RESOURCES += qml.qrc
 

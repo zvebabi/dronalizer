@@ -1,4 +1,5 @@
 #include "uartReader.h"
+#include "statistic.h"
 #include <QtMath>
 #include <QDateTime>
 #include <thread>
@@ -6,9 +7,9 @@
 #include <memory>
 #define REAL_DEVICE
 
-uartReader::uartReader(QObject *parent) : QObject(parent),
-    firstLine(true), serviceMode(false), isPortOpen(false),
-    m_serNumber(-1), deviceInSleepMode(false), m_flyMode(false)
+uartReader::uartReader(QObject *parent)
+  : QObject(parent), m_serNumber(-1), m_flyMode(false), m_writeToFileOne(false)
+  , isPortOpen(false), firstLine(true), serviceMode(false), deviceInSleepMode(false)
 {
     qRegisterMetaType<QtCharts::QAbstractSeries*>();
     qRegisterMetaType<QtCharts::QAbstractAxis*>();
@@ -35,7 +36,7 @@ uartReader::~uartReader()
         delete device;
         qDebug() << "call disconnect port";
     }
-    if(logFile->isOpen())
+    if(logFile != NULL)
         logFile->close();
 }
 
@@ -122,7 +123,7 @@ void uartReader::getListOfPort()
 
 void uartReader::readData()
 {
-    qDebug() << "in readdata";
+//    qDebug() << "in readdata";
     //manually readData from file
 #ifndef REAL_DEVICE
     std::thread( [&] () {
@@ -224,7 +225,8 @@ void uartReader::processLine(const QByteArray &_line)
     qDebug() << _line;
     if (!m_flyMode)
         return;
-    QStringList line;//(_line);
+    qDebug() << _line;
+    QStringList line;
     logFile->write(_line);
 
     for (auto w : _line.split(','))
@@ -232,8 +234,7 @@ void uartReader::processLine(const QByteArray &_line)
         line.append(QString(w));
     }
     //appendDataToseries/writeTofile
-    QRegExp concRX("^C=*");
-    QRegExp endMsgRX("^---*");
+
     if(line.size()==1)
     {
         QStringList pairOfvalue;
@@ -255,7 +256,6 @@ void uartReader::processLine(const QByteArray &_line)
             if( tempPoint[3].y() > axisYRange[3].y())
                 axisYRange[3].setY(tempPoint[3].y());
 //            qDebug() << "Match conc " << pairOfvalue[1].toDouble();
-//            emit adjustAxis(axisYRange);
         }
 
         if( pairOfvalue.size()==1) //end of packet line "-------"
@@ -282,34 +282,20 @@ void uartReader::processLine(const QByteArray &_line)
                            ,axisYRange[2]
                            ,axisYRange[3] );
             qDebug() << "temppoint: " <<  tempPoint;
+            dataProcessingHandler(tempPoint); //send data to ui
+
+
             delayThread.join();
         }
     }
     else
     {
-        //TODO:work with voltage data
-        QRegExp uMeasRX("^u_meas=*");
-        QRegExp uRefRX("^u_ref=*");
-        QRegExp uPnRX("^u_d=*");
-        qDebug() << "line size: "<<line.size();
+//        qDebug() << "line size: "<<line.size();
         for (auto val : line)
         {
             QStringList pairOfvalueU;
             for (auto w : val.split('='))
                 pairOfvalueU.append(QString(w));
-
-//            if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare("u_meas") == 0 )
-//            {
-//                qDebug()<< "u_meas=" << pairOfvalueU[1];
-//            }
-//            else if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare(" u_ref") == 0 )
-//            {
-//                qDebug() << "u_ref=" << pairOfvalueU[1];
-//            }
-//            else if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare(" u_d") == 0 )
-//            {
-//                qDebug() << "u_d=" << pairOfvalueU[1];
-//            }
 
             if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare("u_meas") == 0 )
             {
@@ -318,55 +304,28 @@ void uartReader::processLine(const QByteArray &_line)
                     axisYRange[0].setX(tempPoint[0].y());
                 if( tempPoint[0].y() > axisYRange[0].y())
                     axisYRange[0].setY(tempPoint[0].y());
-                qDebug() << "Match umeas " << val.right(8).toDouble();
-//                update(0, tempPoint[0]); //update conc
-//                emit adjustAxis(axisYRange);
+//                qDebug() << "Match umeas " << val.right(8).toDouble();
             }
             else if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare(" u_ref") == 0 )
             {
-//                if (val.right(3).compare("nan"))
-//                    qDebug() << "val is nan";
                 tempPoint[1].setY(pairOfvalueU[1].toDouble());
                 if( tempPoint[1].y() < axisYRange[1].x())
                     axisYRange[1].setX(tempPoint[1].y());
                 if( tempPoint[1].y() > axisYRange[1].y())
                     axisYRange[1].setY(tempPoint[1].y());
-                qDebug() << "Match uref " << val.right(8).toDouble();
-//                update(1, tempPoint[1]); //update conc
-//                emit adjustAxis(axisYRange);
+//                qDebug() << "Match uref " << val.right(8).toDouble();
             }
             else if(pairOfvalueU.size()==2 && pairOfvalueU.first().compare(" u_d") == 0 )
             {
-//                if (val.right(3).compare("nan"))
-//                    qDebug() << "val is nan";
                 tempPoint[2].setY(pairOfvalueU[1].toDouble());
                 if( tempPoint[2].y() < axisYRange[2].x())
                     axisYRange[2].setX(tempPoint[2].y());
                 if( tempPoint[2].y() > axisYRange[2].y())
                     axisYRange[2].setY(tempPoint[2].y());
-                qDebug() << "Match upn " << val.right(8).toDouble();
-//                update(2, tempPoint[2]); //update conc
-//                emit adjustAxis(axisYRange[0]
-//                               ,axisYRange[1]
-//                               ,axisYRange[2]
-//                               ,axisYRange[3] );
+//                qDebug() << "Match upn " << val.right(8).toDouble();
             }
         }
     }
-
-//identity
-//    if( line.first().compare("x=i") ==0)
-//        identityHandler(line);
-////service mode parser
-//    if( line.first().compare("x=s") == 0)
-//        serviceModeHandler(line);   //parse all comands here
-////measure mode
-//    if( line.first().compare("x=m\n") == 0)
-//        buttonPressHandler(line);
-//    if( line.first().compare("x=d") ==0)
-//        dataAquisitionHandler(line);
-//    if( line.first().compare("x=e\n") ==0)
-//        dataProcessingHandler(line);
 }
 
 void uartReader::serviceModeHandler(const QStringList &line)
@@ -432,9 +391,39 @@ void uartReader::dataAquisitionHandler(const QStringList &line)
     }
 }
 
-void uartReader::dataProcessingHandler(const QStringList &line)
+void uartReader::dataProcessingHandler(QVector<QPointF> tempPoint)
 {
+    allDataHere.push_back(tempPoint);
+    //TODO: rewrite to windowed sd and mean
+    //get data for nSamples
+    int count=0;
+    std::vector<double> accMeas;
+    std::vector<double> accRef;
+    std::vector<double> accPn;
+    for (auto p = allDataHere.rbegin(); p != allDataHere.rend(); p++)
+    {
+        accMeas.push_back(p->at(0).y());
+        accRef.push_back( p->at(1).y());
+        accPn.push_back(  p->at(2).y());
+        if( ++count >= m_nSamples)
+            break;
+    }
+    //calc mean
+    Statistics<double> measStat(accMeas);
+    Statistics<double>  refStat(accRef);
+    Statistics<double>   pnStat(accPn);
 
+
+    //sendDataToUi
+    emit sendDataToUI(QPointF(measStat.getMean(), measStat.getStdDev())      //mean
+                     ,QPointF(refStat.getMean(), refStat.getStdDev())      //ref
+                     ,QPointF(pnStat.getMean(), pnStat.getStdDev()));    //pn
+    //sendDataToFileOnce
+    if(m_writeToFileOne)
+    {
+
+        m_writeToFileOne=false;
+    }
 }
 
 void uartReader::buttonPressHandler(const QStringList &line)

@@ -44,8 +44,15 @@ public slots:
     QString getDataPath() {return documentsPath;}
     void readData();
     void prepareCommandToSend(QString cmd_);
-    void setFlyMode(bool mode){
+    void setFlyMode(bool mode, QString _nSamples){
         m_flyMode = mode;
+        m_nSamples = _nSamples.toInt();
+    }
+    void writeToFileOne(bool mode, QString _temp, QString _conc, QString fn1){
+        m_writeToFileOne = mode;
+        m_currentTemp = _temp.toDouble();
+        m_currentConc = _conc.toDouble();
+        m_filenameOne = fn1;
     }
     void sendSeriesPointer(QtCharts::QAbstractSeries *series_,
                            QtCharts::QAbstractAxis *Xaxis_);
@@ -61,8 +68,12 @@ signals:
                    ,QPointF axisYRange_Uref
                    ,QPointF axisYRange_Upn
                    ,QPointF axisYRange_C);
+    void sendDataToUI(QPointF _mean
+                     ,QPointF _ref
+                     ,QPointF _pn);
 private:
     void sendDataToDevice();
+    QVector<QVector<QPointF>> allDataHere;
     QVector<QPointF> tempPoint;  //0-meas
                                  //1-ref
                                  //2-pn
@@ -73,7 +84,7 @@ private:
     void serviceModeHandler(const QStringList& line);
     void identityHandler(const QStringList& line);
     void dataAquisitionHandler(const QStringList& line);
-    void dataProcessingHandler(const QStringList& line);
+    void dataProcessingHandler(QVector<QPointF> tempPoint);
     void buttonPressHandler(const QStringList& line);
 
     std::vector<QString> ports;
@@ -82,7 +93,11 @@ private:
     QVector<QtCharts::QAbstractSeries *>m_series;
     QVector<QtCharts::QAbstractAxis *>m_axisX;
     int m_serNumber;
-    bool m_flyMode;
+    int m_nSamples;
+    double m_currentTemp;
+    double m_currentConc;
+    QString m_filenameOne;
+    bool m_flyMode, m_writeToFileOne;
     std::shared_ptr<QFile> logFile;
     bool isPortOpen, firstLine, serviceMode;
     std::atomic_bool deviceInSleepMode;

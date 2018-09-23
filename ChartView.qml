@@ -28,8 +28,21 @@ Item {
         onSendDebugInfo: {
             showPopupTips(qsTr(data), time)
         }
+        onSendDataToUI: {
+            uMeasMean.text = Math.round(_mean.x*10000)/10000
+            uMeasSD.text   = Math.round(_mean.y*10000)/10000
+            uRefMean.text  = Math.round(_ref.x *10000)/10000
+            uRefSD.text    = Math.round(_ref.y *10000)/10000
+            uPnMean.text   = Math.round(_pn.x  *10000)/10000
+            uPnSD.text     = Math.round(_pn.y  *10000)/10000
+        }
     }
     RowLayout{
+        spacing: 10*app.dp
+        anchors.top: menuBar.bottom
+        anchors.fill: parent
+        anchors.margins: 10*app.dp
+        anchors.topMargin: menuBar.height+10*app.dp
         ColumnLayout {
             spacing: 10*app.dp
             anchors.top: menuBar.bottom
@@ -314,17 +327,38 @@ Item {
         ColumnLayout {
             RowLayout{
             ColumnLayout{
-                Button {
-                    id: startMeasureAverage
-                    enabled: true
-                    contentItem: ButtonLabel {text: qsTr("StartMeasureAverage")}
-                    onClicked: {
-                        reciever.prepareCommandToSend("duty\r")
-                        reciever.setFlyMode(true)
+                RowLayout {
+                    Button {
+                        id: startMeasureAverage
+                        enabled: true
+                        contentItem: ButtonLabel {text: qsTr("StartMeasureAverage")}
+                        onClicked: {
+                            reciever.prepareCommandToSend("duty\r")
+                            reciever.setFlyMode(true,sampleSize.text)
+                        }
+                    }
+                    Button {
+                        id: writeToFile1
+                        enabled: true
+                        contentItem: ButtonLabel {text: qsTr("WriteToFile#1")}
+                        onClicked: {
+                            if(filePathText1_tf.text.length < 2)
+                            {
+                                showPopupTips(qsTr("Filename#1 too short"), 1500)
+                            } else {
+                            reciever.writeToFileOne(true
+                                    ,currentTemperature_tf.text
+                                    ,gasConc_tf.text
+                                    ,filePathText1_tf.text)
+                            }
+                        }
                     }
                 }
                 TextField {
                     id: sampleSize
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Sample Size")
+                    text:qsTr("20")
                     placeholderText: "Sample Size"
                 }
                 GridLayout {
@@ -332,99 +366,98 @@ Item {
     //                height: 3
                     TextField {
                         id: uMeasMean
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Measured value")
                         placeholderText: "uMeasMean"
                     }
                     TextField {
                         id: uMeasSD
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("StDev")
                         placeholderText: "uMeasSD"
                     }
                     TextField {
                         id: uRefMean
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Reference")
                         placeholderText: "uRefMean"
                     }
                     TextField {
                         id: uRefSD
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("StDev")
                         placeholderText: "uRefSD"
                     }
                     TextField {
                         id: uPnMean
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Pn")
                         placeholderText: "uPnMean"
                     }
                     TextField {
                         id: uPnSD
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("StDev")
                         placeholderText: "uPnSD"
                     }
                 }
-                }
+            }
             ColumnLayout{
-                Button {
-                    id: writeToFile1
-                    enabled: true
-                    contentItem: ButtonLabel {text: qsTr("StartMeasureAverage")}
-                    onClicked: {
-                        reciever.prepareCommandToSend("duty\r")
-                        reciever.setFlyMode(true)
-                    }
-                }
                 TextField {
                     id: currentTemperature_tf
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Temperature")
                     placeholderText: "Temp"
                 }
                 TextField {
                     id: gasConc_tf
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Gas conc.")
                     placeholderText: "Conc"
                 }
 
             }
             }
-            TextField {
-                id: filePathText1_tf
-                visible: true
-                text:reciever.getDataPath()
-                font.family: "DejaVu Sans Mono"
-                font.pixelSize: app.fontPixelSize
-                readOnly: false
-                selectByMouse: true
-                MouseArea {
-                    anchors.fill: parent
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    onClicked: {
-                        if(mouse.button === Qt.RightButton) {
-                            filePathText.copy()
-                            tipsWithPath.showedText = qsTr("Path has been copied to clipboard")
-                            tipsWithPath.open()
-                            delay(1500, tipsWithPath.close)
-                            filePathText.deselect()
-                        }
-                        if(mouse.button === Qt.LeftButton) {
-                            filePathText.selectAll()
-                        }
-                    }
+            RowLayout{
+                TextField {
+                    id: filePathText1_tf
+                    visible: true
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Filename#1")
+                    placeholderText: "Filename#1"
+//                    text:reciever.getDataPath()
+                    font.family: "DejaVu Sans Mono"
+                    font.pixelSize: app.fontPixelSize
+                    readOnly: false
+                    selectByMouse: true
                 }
-            }
-            Button {
-                id: selectPath1
-                contentItem:  ButtonLabel {text:qsTr("Select File#1")}
-                visible: true
-                FileDialog {
-                    id: fileDialog1
-                    title: qsTr("Select directory")
+                Button {
+                    id: selectPath1
+                    contentItem:  ButtonLabel {text:qsTr("Write to File#1")}
                     visible: false
-                    folder: "file:///" + reciever.getDataPath()
-                    selectExisting: true
-                    selectFolder: false
-                    selectMultiple: false
-                    onAccepted: {
-//                        reciever.selectPath(fileUrl.toString().substring(8) + "/")
-//                        filePathText1_tf.text = reciever.getDataPath()
+                    FileDialog {
+                        id: fileDialog1
+                        title: qsTr("Select directory")
+                        visible: false
+                        folder: "file:///" + reciever.getDataPath()
+                        selectExisting: true
+                        selectFolder: false
+                        selectMultiple: false
+                        onAccepted: {
+    //                        reciever.selectPath(fileUrl.toString().substring(8) + "/")
+    //                        filePathText1_tf.text = reciever.getDataPath()
+                        }
                     }
+                    onClicked: fileDialog1.open()
                 }
-                onClicked: fileDialog1.open()
             }
             TextField {
                 id: filePathText2_tf
                 visible: true
-                text:reciever.getDataPath()
+//                text:reciever.getDataPath()
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Filenume#2")
+                placeholderText: "Filename#2"
                 font.family: "DejaVu Sans Mono"
                 font.pixelSize: app.fontPixelSize
                 readOnly: false
@@ -449,7 +482,7 @@ Item {
             Button {
                 id: selectPath2
                 contentItem:  ButtonLabel {text:qsTr("Select File#2")}
-                visible: true
+                visible: false
                 FileDialog {
                     id: fileDialog2
                     title: qsTr("Select directory")
@@ -468,14 +501,20 @@ Item {
             RowLayout{
                 TextField {
                     id: sampleSize2
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Sample Size#2")
                     placeholderText: "Sample Size 2"
                 }
                 TextField {
                     id: serialNumber
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Serial#")
                     placeholderText: "SerialNumber"
                 }
                 TextField {
                     id: writeDelay
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Write delay")
                     placeholderText: "WriteDelay"
                 }
             }
