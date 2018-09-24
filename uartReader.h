@@ -50,8 +50,8 @@ public slots:
     }
     void writeToFileOne(bool mode, QString _temp, QString _conc, QString fn1){
         m_writeToFileOne = mode;
-        m_currentTemp = _temp.toDouble();
-        m_currentConc = _conc.toDouble();
+        m_currentTemp = _temp;//.toDouble();
+        m_currentConc = _conc;//.toDouble();
         m_filenameOne = fn1;
     }
     void sendSeriesPointer(QtCharts::QAbstractSeries *series_,
@@ -94,8 +94,8 @@ private:
     QVector<QtCharts::QAbstractAxis *>m_axisX;
     int m_serNumber;
     int m_nSamples;
-    double m_currentTemp;
-    double m_currentConc;
+    QString m_currentTemp;
+    QString m_currentConc;
     QString m_filenameOne;
     bool m_flyMode, m_writeToFileOne;
     std::shared_ptr<QFile> logFile;

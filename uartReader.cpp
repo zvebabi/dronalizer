@@ -4,6 +4,7 @@
 #include <QDateTime>
 #include <thread>
 #include <chrono>
+#include <ctime>
 #include <memory>
 #define REAL_DEVICE
 
@@ -225,7 +226,6 @@ void uartReader::processLine(const QByteArray &_line)
     qDebug() << _line;
     if (!m_flyMode)
         return;
-    qDebug() << _line;
     QStringList line;
     logFile->write(_line);
 
@@ -400,11 +400,13 @@ void uartReader::dataProcessingHandler(QVector<QPointF> tempPoint)
     std::vector<double> accMeas;
     std::vector<double> accRef;
     std::vector<double> accPn;
+    std::vector<double> accConc;
     for (auto p = allDataHere.rbegin(); p != allDataHere.rend(); p++)
     {
         accMeas.push_back(p->at(0).y());
         accRef.push_back( p->at(1).y());
         accPn.push_back(  p->at(2).y());
+        accConc.push_back(p->at(3).y());
         if( ++count >= m_nSamples)
             break;
     }
@@ -412,6 +414,7 @@ void uartReader::dataProcessingHandler(QVector<QPointF> tempPoint)
     Statistics<double> measStat(accMeas);
     Statistics<double>  refStat(accRef);
     Statistics<double>   pnStat(accPn);
+    Statistics<double>   concStat(accConc);
 
 
     //sendDataToUi
@@ -421,7 +424,25 @@ void uartReader::dataProcessingHandler(QVector<QPointF> tempPoint)
     //sendDataToFileOnce
     if(m_writeToFileOne)
     {
-
+        qDebug() << "write to file";
+        QFile f(QString(documentsPath+"/calibr_"+m_filenameOne+".csv"));
+        if (!f.open(QIODevice::Append | QIODevice::Text))
+        {
+            emit sendDebugInfo("Cannot open file" + m_filenameOne);
+            return;
+        }
+        QTextStream ts(&f);
+        //get time
+        QString str = QDateTime::currentDateTime().toString("yyyyMMdd_hhmm");
+        //write header
+        ts << QString("Date\tTemp\tConc_real\tConc_meas\tSD\tU_meas\tSD\t"
+                      "U_Ref\tSD\tU_d\tSD\n")
+           << str <<"\t" << m_currentTemp <<"\t" << m_currentConc <<"\t"
+           << concStat.getMean() <<"\t" << concStat.getStdDev()   <<"\t"
+           << measStat.getMean() <<"\t" << measStat.getStdDev()   <<"\t"
+           << refStat.getMean()  <<"\t" << refStat.getStdDev()    <<"\t"
+           << pnStat.getMean()   <<"\t" << pnStat.getStdDev()     <<"\n";
+        f.close();
         m_writeToFileOne=false;
     }
 }
