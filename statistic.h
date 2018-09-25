@@ -28,7 +28,7 @@ public:
        std::sort(data.begin(),data.end());
        if (data.size() % 2 == 0)
           return (data[(data.size() / 2) - 1] + data[data.size()/ 2]) / 2.0;
-       return data[data.size / 2];
+       return data[data.size() / 2];
     }
     private:
         std::vector<T> data;

@@ -27,6 +27,9 @@
 #include <sstream>
 #include <ctime>
 #include <memory>
+#include <thread>
+
+#include "statistic.h"
 
 class uartReader : public QObject
 {
@@ -54,6 +57,10 @@ public slots:
         m_currentConc = _conc;//.toDouble();
         m_filenameOne = fn1;
     }
+    void enableLogging(QString _nSamples, QString _logDelay);
+    void disableLogging();
+    void logToFile2();
+
     void sendSeriesPointer(QtCharts::QAbstractSeries *series_,
                            QtCharts::QAbstractAxis *Xaxis_);
     void selectPath(QString pathForSave);
@@ -74,6 +81,7 @@ signals:
 private:
     void sendDataToDevice();
     QVector<QVector<QPointF>> allDataHere;
+    QVector<QVector<QPointF>> dataForLogging;
     QVector<QPointF> tempPoint;  //0-meas
                                  //1-ref
                                  //2-pn
@@ -86,6 +94,7 @@ private:
     void dataAquisitionHandler(const QStringList& line);
     void dataProcessingHandler(QVector<QPointF> tempPoint);
     void buttonPressHandler(const QStringList& line);
+    void calcMeanDev(std::vector<Statistics<double> > &data, int numOfSamples);
 
     std::vector<QString> ports;
 
@@ -97,7 +106,10 @@ private:
     QString m_currentTemp;
     QString m_currentConc;
     QString m_filenameOne;
-    bool m_flyMode, m_writeToFileOne;
+    int m_logWriteDelay;
+    int m_nSamplesLog;
+    std::shared_ptr<QTimer> timer;
+    bool m_flyMode, m_writeToFileOne, m_enableLogging;
     std::shared_ptr<QFile> logFile;
     bool isPortOpen, firstLine, serviceMode;
     std::atomic_bool deviceInSleepMode;

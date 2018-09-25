@@ -342,20 +342,21 @@ Item {
                         enabled: true
                         contentItem: ButtonLabel {text: qsTr("WriteToFile#1")}
                         onClicked: {
-                            if(filePathText1_tf.text.length < 2)
+                            if(serialNumber_tf.text.length < 2)
                             {
-                                showPopupTips(qsTr("Filename#1 too short"), 1500)
+                                showPopupTips(qsTr("Enter serial number(minimum2 character)"), 1500)
                             } else {
                             reciever.writeToFileOne(true
                                     ,currentTemperature_tf.text
                                     ,gasConc_tf.text
-                                    ,filePathText1_tf.text)
+                                    ,serialNumber_tf.text)
                             }
                         }
                     }
                 }
                 TextField {
                     id: sampleSize
+                    validator: IntValidator {bottom: 1; top: 300;}
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Sample Size")
                     text:qsTr("20")
@@ -405,117 +406,53 @@ Item {
             ColumnLayout{
                 TextField {
                     id: currentTemperature_tf
+                    validator: IntValidator {bottom: -100; top: 400;}
+                    text:qsTr("23")
+                    placeholderText: "Temp"
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Temperature")
-                    placeholderText: "Temp"
                 }
                 TextField {
                     id: gasConc_tf
+                    validator: IntValidator {bottom: 0; top: 99999;}
+                    text:qsTr("0")
+                    placeholderText: "Conc"
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Gas conc.")
-                    placeholderText: "Conc"
                 }
 
             }
             }
             RowLayout{
                 TextField {
-                    id: filePathText1_tf
+                    id: serialNumber_tf
                     visible: true
                     ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Filename#1")
-                    placeholderText: "Filename#1"
+                    ToolTip.text: qsTr("Serial Number")
+                    placeholderText: "Serial Number"
 //                    text:reciever.getDataPath()
                     font.family: "DejaVu Sans Mono"
                     font.pixelSize: app.fontPixelSize
                     readOnly: false
                     selectByMouse: true
                 }
-                Button {
-                    id: selectPath1
-                    contentItem:  ButtonLabel {text:qsTr("Write to File#1")}
-                    visible: false
-                    FileDialog {
-                        id: fileDialog1
-                        title: qsTr("Select directory")
-                        visible: false
-                        folder: "file:///" + reciever.getDataPath()
-                        selectExisting: true
-                        selectFolder: false
-                        selectMultiple: false
-                        onAccepted: {
-    //                        reciever.selectPath(fileUrl.toString().substring(8) + "/")
-    //                        filePathText1_tf.text = reciever.getDataPath()
-                        }
-                    }
-                    onClicked: fileDialog1.open()
-                }
-            }
-            TextField {
-                id: filePathText2_tf
-                visible: true
-//                text:reciever.getDataPath()
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Filenume#2")
-                placeholderText: "Filename#2"
-                font.family: "DejaVu Sans Mono"
-                font.pixelSize: app.fontPixelSize
-                readOnly: false
-                selectByMouse: true
-                MouseArea {
-                    anchors.fill: parent
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    onClicked: {
-                        if(mouse.button === Qt.RightButton) {
-                            filePathText2_tf.copy()
-                            tipsWithPath.showedText = qsTr("Path has been copied to clipboard")
-                            tipsWithPath.open()
-                            delay(1500, tipsWithPath.close)
-                            filePathText2_tf.deselect()
-                        }
-                        if(mouse.button === Qt.LeftButton) {
-                            filePathText2_tf.selectAll()
-                        }
-                    }
-                }
-            }
-            Button {
-                id: selectPath2
-                contentItem:  ButtonLabel {text:qsTr("Select File#2")}
-                visible: false
-                FileDialog {
-                    id: fileDialog2
-                    title: qsTr("Select directory")
-                    visible: false
-                    folder: "file:///" + reciever.getDataPath()
-                    selectExisting: true
-                    selectFolder: true
-                    selectMultiple: false
-                    onAccepted: {
-//                        reciever.selectPath(fileUrl.toString().substring(8) + "/")
-//                        filePathText_tf.text = reciever.getDataPath()
-                    }
-                }
-                onClicked: fileDialog2.open()
             }
             RowLayout{
                 TextField {
-                    id: sampleSize2
+                    id: sampleSize2_tf
+                    text:"100"
+                    validator: IntValidator {bottom: 1; top: 300;}
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Sample Size#2")
                     placeholderText: "Sample Size 2"
                 }
                 TextField {
-                    id: serialNumber
+                    id: writeDelay_tf
+                    text:"5"
+                    validator: IntValidator {bottom: 1; top: 120;}
                     ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Serial#")
-                    placeholderText: "SerialNumber"
-                }
-                TextField {
-                    id: writeDelay
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Write delay")
-                    placeholderText: "WriteDelay"
+                    ToolTip.text: qsTr("Write delay, min")
+                    placeholderText: "Write Delay"
                 }
             }
             Switch {
@@ -525,14 +462,16 @@ Item {
                     //TODO: send a signal to reciever to switch between DEBUG/WORK mode
                     console.log("position: " + position)
                     if (position == 1) {
-                        writeToFileSwitcher.text = qsTr("WriteModeOn")
-                        reciever.prepareCommandToSend("debug\r")
-                        reciever.setFlyMode(false)
+                        if(serialNumber_tf.text.length < 2) {
+                            showPopupTips(qsTr("Enter serial number(minimum2 character)"), 1500)
+                        } else {
+                            writeToFileSwitcher.text = qsTr("WriteModeOn")
+                            reciever.enableLogging(sampleSize2_tf.text, writeDelay_tf.text)
+                        }
                     }
                     else {
                         writeToFileSwitcher.text = qsTr("WriteModeOff")
-//                        reciever.prepareCommandToSend("work\r")
-//                        reciever.setFlyMode(true)
+                        reciever.disableLogging();
                     }
                 }
             }

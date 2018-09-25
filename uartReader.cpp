@@ -1,16 +1,19 @@
 #include "uartReader.h"
-#include "statistic.h"
+
 #include <QtMath>
 #include <QDateTime>
+#include <QTimer>
 #include <thread>
 #include <chrono>
 #include <ctime>
 #include <memory>
 #define REAL_DEVICE
+//#define SHOW_Debug_
 
 uartReader::uartReader(QObject *parent)
   : QObject(parent), m_serNumber(-1), m_flyMode(false), m_writeToFileOne(false)
-  , isPortOpen(false), firstLine(true), serviceMode(false), deviceInSleepMode(false)
+  , m_enableLogging(false), isPortOpen(false), firstLine(true)
+  , serviceMode(false), deviceInSleepMode(false)
 {
     qRegisterMetaType<QtCharts::QAbstractSeries*>();
     qRegisterMetaType<QtCharts::QAbstractAxis*>();
@@ -65,12 +68,12 @@ void uartReader::initDevice(QString port, QString baudRate,
 //        while( serNumber == -1 ) {};
         emit sendDebugInfo("Connected to: " + device->portName());
         emit makeSeries();
-        logFile = std::make_shared<QFile>(QString(documentsPath
-                                                  +"/log_"
-                                                  +QDateTime::currentDateTime().toString("yyyyMMdd_hhmm")
-                                                  +".txt"));
-        if (!logFile->open(QIODevice::WriteOnly | QIODevice::Text))
-            emit sendDebugInfo("Cannot create logfile", 2000);
+//        logFile = std::make_shared<QFile>(QString(documentsPath
+//                                                  +"/log_"
+//                                                  +QDateTime::currentDateTime().toString("yyyyMMdd_hhmm")
+//                                                  +".txt"));
+//        if (!logFile->open(QIODevice::WriteOnly | QIODevice::Text))
+//            emit sendDebugInfo("Cannot create logfile", 2000);
         updateProperties(propertiesNames_, propertiesValues_);
     }
     else {
@@ -167,8 +170,24 @@ void uartReader::prepareCommandToSend(QString cmd_)
     if(!deviceInSleepMode) { sendDataToDevice(); } //immediately send command
 }
 
+void uartReader::enableLogging(QString _nSamples, QString _logDelay) {
+    m_logWriteDelay = _logDelay.toInt()*1000*60; //convert min to ms
+    m_nSamplesLog = _nSamples.toInt();
+
+//    if (!dataForLogging.empty()) {dataForLogging.clear();}
+//    dataForLogging.resize(m_nSamplesLog);
+
+    m_enableLogging = true;
+}
+
+void uartReader::disableLogging() {
+    m_enableLogging =false;
+    if(timer)
+        timer->stop();
+}
+
 void uartReader::sendSeriesPointer(QtCharts::QAbstractSeries* series_
-                                  , QtCharts::QAbstractAxis* Xaxis_)
+                                   , QtCharts::QAbstractAxis* Xaxis_)
 {
     qDebug() << "sendSeriesPointer: " << series_;
     m_series.push_back(series_);
@@ -216,18 +235,20 @@ void uartReader::update(int graphIdx, QPointF p)
         xySeries->append(p);//replace(lines.value(series));
     }
     if(m_axisX[graphIdx]) {
-        m_axisX[graphIdx]->setMin(p.rx()-180);
+        m_axisX[graphIdx]->setMin(p.rx()-3600);
         m_axisX[graphIdx]->setMax(p.rx());
     }
 }
 
 void uartReader::processLine(const QByteArray &_line)
 {
+#ifdef SHOW_Debug_
     qDebug() << _line;
+#endif //SHOW_Debug_
     if (!m_flyMode)
         return;
     QStringList line;
-    logFile->write(_line);
+//    logFile->write(_line);
 
     for (auto w : _line.split(','))
     {
@@ -281,7 +302,9 @@ void uartReader::processLine(const QByteArray &_line)
                            ,axisYRange[1]
                            ,axisYRange[2]
                            ,axisYRange[3] );
+#ifdef SHOW_Debug_
             qDebug() << "temppoint: " <<  tempPoint;
+#endif //SHOW_Debug_
             dataProcessingHandler(tempPoint); //send data to ui
 
 
@@ -396,31 +419,33 @@ void uartReader::dataProcessingHandler(QVector<QPointF> tempPoint)
     allDataHere.push_back(tempPoint);
     //TODO: rewrite to windowed sd and mean
     //get data for nSamples
-    int count=0;
-    std::vector<double> accMeas;
-    std::vector<double> accRef;
-    std::vector<double> accPn;
-    std::vector<double> accConc;
-    for (auto p = allDataHere.rbegin(); p != allDataHere.rend(); p++)
-    {
-        accMeas.push_back(p->at(0).y());
-        accRef.push_back( p->at(1).y());
-        accPn.push_back(  p->at(2).y());
-        accConc.push_back(p->at(3).y());
-        if( ++count >= m_nSamples)
-            break;
-    }
-    //calc mean
-    Statistics<double> measStat(accMeas);
-    Statistics<double>  refStat(accRef);
-    Statistics<double>   pnStat(accPn);
-    Statistics<double>   concStat(accConc);
+    std::vector<Statistics<double> > stat;
+    calcMeanDev(stat, m_nSamples);
+//    int count=0;
+//    std::vector<double> accMeas;
+//    std::vector<double> accRef;
+//    std::vector<double> accPn;
+//    std::vector<double> accConc;
+//    for (auto p = allDataHere.rbegin(); p != allDataHere.rend(); p++)
+//    {
+//        accMeas.push_back(p->at(0).y());
+//        accRef.push_back( p->at(1).y());
+//        accPn.push_back(  p->at(2).y());
+//        accConc.push_back(p->at(3).y());
+//        if( ++count >= m_nSamples)
+//            break;
+//    }
+//    //calc mean
+//    Statistics<double> measStat(accMeas);
+//    Statistics<double>  refStat(accRef);
+//    Statistics<double>   pnStat(accPn);
+//    Statistics<double>   concStat(accConc);
 
 
     //sendDataToUi
-    emit sendDataToUI(QPointF(measStat.getMean(), measStat.getStdDev())      //mean
-                     ,QPointF(refStat.getMean(), refStat.getStdDev())      //ref
-                     ,QPointF(pnStat.getMean(), pnStat.getStdDev()));    //pn
+    emit sendDataToUI(QPointF(stat[0].getMean(), stat[0].getStdDev())      //mean
+                     ,QPointF(stat[1].getMean(), stat[1].getStdDev())      //ref
+                     ,QPointF(stat[2].getMean(), stat[2].getStdDev()));    //pn
     //sendDataToFileOnce
     if(m_writeToFileOne)
     {
@@ -438,19 +463,86 @@ void uartReader::dataProcessingHandler(QVector<QPointF> tempPoint)
         ts << QString("Date\tTemp\tConc_real\tConc_meas\tSD\tU_meas\tSD\t"
                       "U_Ref\tSD\tU_d\tSD\n")
            << str <<"\t" << m_currentTemp <<"\t" << m_currentConc <<"\t"
-           << concStat.getMean() <<"\t" << concStat.getStdDev()   <<"\t"
-           << measStat.getMean() <<"\t" << measStat.getStdDev()   <<"\t"
-           << refStat.getMean()  <<"\t" << refStat.getStdDev()    <<"\t"
-           << pnStat.getMean()   <<"\t" << pnStat.getStdDev()     <<"\n";
+           << stat[0].getMean() <<"\t" <<  stat[0].getStdDev()   <<"\t"
+           << stat[1].getMean() <<"\t" <<  stat[1].getStdDev()   <<"\t"
+           << stat[2].getMean() <<"\t" <<  stat[2].getStdDev()    <<"\t"
+           << stat[3].getMean() <<"\t" <<  stat[3].getStdDev()     <<"\n";
         f.close();
         m_writeToFileOne=false;
     }
+    if(m_enableLogging)
+    {
+        if(!timer) //first loop only
+        {
+            qDebug() << "Create timer for Log file2";
+            timer = std::make_shared<QTimer>();
+            connect(timer.get(), &QTimer::timeout, this, &uartReader::logToFile2);
+            //create file for logging
+            logFile = std::make_shared<QFile>(QString(documentsPath
+                        +QDateTime::currentDateTime().toString("/yyyyMMdd_hhmm_")
+                        +m_filenameOne
+                        +"_log.csv"));
+            if (!logFile->open(QIODevice::Append | QIODevice::Text))
+            {
+                emit sendDebugInfo("Cannot create logfile", 2000);
+                return;
+            }
+            QTextStream ts(logFile.get());
+            ts << QString("Temp\tConc_real\tConc_meas\tSD\tU_meas\tSD\t"
+                          "U_Ref\tSD\tU_d\tSD\n");
+        }
+        if(!timer->isActive())
+            timer->start(m_logWriteDelay);
+            //update if values were updated
+        if( timer->interval() != m_logWriteDelay)
+            timer->start(m_logWriteDelay);
+    }
+}
+
+void uartReader::logToFile2()
+{
+    qDebug() << "log to file2" << QDateTime::currentDateTime().toString("yyyyMMdd_hh:mm:ss");
+    std::vector<Statistics<double> > stat;
+    calcMeanDev(stat, m_nSamplesLog);
+
+    QTextStream ts(logFile.get());
+//    ts << QString("Temp\tConc_real\tConc_meas\tSD\tU_meas\tSD\t"
+//                  "U_Ref\tSD\tU_d\tSD\n");
+    ts << m_currentTemp <<"\t" << m_currentConc <<"\t"
+       << stat[0].getMean() <<"\t" <<  stat[0].getStdDev()   <<"\t"
+       << stat[1].getMean() <<"\t" <<  stat[1].getStdDev()   <<"\t"
+       << stat[2].getMean() <<"\t" <<  stat[2].getStdDev()    <<"\t"
+       << stat[3].getMean() <<"\t" <<  stat[3].getStdDev()     <<"\n";
+}
+
+void uartReader::calcMeanDev(std::vector<Statistics<double> > &data, int numOfSamples)
+{
+    int count=0;
+    std::vector<double> accMeas;
+    std::vector<double> accRef;
+    std::vector<double> accPn;
+    std::vector<double> accConc;
+    for (auto p = allDataHere.rbegin(); p != allDataHere.rend(); p++)
+    {
+        accMeas.push_back(p->at(0).y());
+        accRef.push_back( p->at(1).y());
+        accPn.push_back(  p->at(2).y());
+        accConc.push_back(p->at(3).y());
+        if( ++count >= numOfSamples)
+            break;
+    }
+    //calc mean
+    data.push_back(Statistics<double>(accMeas));
+    data.push_back(Statistics<double>(accRef));
+    data.push_back(Statistics<double>(accPn));
+    data.push_back(Statistics<double>(accConc));
 }
 
 void uartReader::buttonPressHandler(const QStringList &line)
 {
     qDebug() << "signal from button";
 }
+
 
 
 
