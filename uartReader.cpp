@@ -250,12 +250,61 @@ void uartReader::processLine(const QByteArray &_line)
     QStringList line;
 //    logFile->write(_line);
 
+    //appendDataToseries/writeTofile
+#if 1 //new data format
+    //t C Um Ur Ud a b c n ce c0; 11val;
+    //1 2 3  4  5  6 7 8 9 10 11
+    for (auto w : _line.split(';'))
+    {
+        line.append(QString(w));
+    }
+    if(line.size() > 10)
+        deviceInSleepMode = false;
+    else
+        return;
+    //format points
+    for (auto& p: tempPoint)
+        p.setX(line[1].toInt());
+    processTemppoint(0, line[3].toDouble());
+    processTemppoint(1, line[4].toDouble());
+    processTemppoint(2, line[5].toDouble());
+    processTemppoint(3, line[2].toDouble());
+
+    //create timer thread to hold flag while device unsleep
+    auto t1 = std::chrono::high_resolution_clock::now();
+    std::chrono::milliseconds delaySleepMode(100);
+    auto delayThread = std::thread([=]() {
+        auto t2 = std::chrono::high_resolution_clock::now();
+        while( (std::chrono::duration<double, std::milli>(t2 - t1) < delaySleepMode) )
+        {
+            t2 = std::chrono::high_resolution_clock::now();
+        }
+        deviceInSleepMode=true;
+    });
+
+    if(!m_queueCommandsToSend.empty())
+        sendDataToDevice();
+    update(0, tempPoint[0]); //update meas
+    update(1, tempPoint[1]); //update ref
+    update(2, tempPoint[2]); //update pn
+    update(3, tempPoint[3]); //update conc
+    emit adjustAxis(axisYRange[0]
+                   ,axisYRange[1]
+                   ,axisYRange[2]
+                   ,axisYRange[3] );
+#ifdef SHOW_Debug_
+    qDebug() << "temppoint: " <<  tempPoint;
+#endif //SHOW_Debug_
+    dataProcessingHandler(tempPoint); //send data to ui
+    delayThread.join();
+
+
+
+#else
     for (auto w : _line.split(','))
     {
         line.append(QString(w));
     }
-    //appendDataToseries/writeTofile
-
     if(line.size()==1)
     {
         QStringList pairOfvalue;
@@ -306,8 +355,6 @@ void uartReader::processLine(const QByteArray &_line)
             qDebug() << "temppoint: " <<  tempPoint;
 #endif //SHOW_Debug_
             dataProcessingHandler(tempPoint); //send data to ui
-
-
             delayThread.join();
         }
     }
@@ -349,6 +396,7 @@ void uartReader::processLine(const QByteArray &_line)
             }
         }
     }
+#endif
 }
 
 void uartReader::serviceModeHandler(const QStringList &line)
@@ -497,6 +545,15 @@ void uartReader::dataProcessingHandler(QVector<QPointF> tempPoint)
         if( timer->interval() != m_logWriteDelay)
             timer->start(m_logWriteDelay);
     }
+}
+
+void uartReader::processTemppoint(int num, double value)
+{
+    tempPoint[num].setY(value);
+    if( tempPoint[num].y() < axisYRange[num].x())
+        axisYRange[num].setX(tempPoint[num].y());
+    if( tempPoint[num].y() > axisYRange[num].y())
+        axisYRange[num].setY(tempPoint[num].y());
 }
 
 void uartReader::logToFile2()

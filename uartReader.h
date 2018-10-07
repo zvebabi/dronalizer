@@ -93,6 +93,7 @@ private:
     void identityHandler(const QStringList& line);
     void dataAquisitionHandler(const QStringList& line);
     void dataProcessingHandler(QVector<QPointF> tempPoint);
+    void processTemppoint(int num, double value);
     void buttonPressHandler(const QStringList& line);
     void calcMeanDev(std::vector<Statistics<double> > &data, int numOfSamples);
 
