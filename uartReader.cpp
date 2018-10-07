@@ -258,11 +258,11 @@ void uartReader::processLine(const QByteArray &_line)
     {
         line.append(QString(w));
     }
-    if(line.size() > 10)
+    if(line.size() > 6)
         deviceInSleepMode = false;
     else
         return;
-    //format points
+    //fill points
     for (auto& p: tempPoint)
         p.setX(line[1].toInt());
     processTemppoint(0, line[3].toDouble());
