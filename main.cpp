@@ -10,6 +10,7 @@
 int main(int argc, char *argv[])
 {
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QLocale::setDefault(QLocale(QLocale::English, QLocale::UnitedStates));
     QApplication app(argc, argv);
     qApp->setQuitOnLastWindowClosed(true);
     QQuickStyle::setStyle("Material");

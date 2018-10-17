@@ -41,21 +41,26 @@ Item {
         spacing: 10*app.dp
         anchors.top: menuBar.bottom
         anchors.fill: parent
-        anchors.margins: 10*app.dp
-        anchors.topMargin: menuBar.height+10*app.dp
+//        anchors.margins: 10*app.dp
+        anchors.topMargin: menuBar.height//+10*app.dp
         ColumnLayout {
+            Layout.alignment: Qt.AlignLeft | Qt.AlignTop// | Qt.AlignBottom
+//            Layout.preferredHeight: app.height - menuBar.height
+            Layout.leftMargin: 10*app.dp
             spacing: 10*app.dp
-            anchors.top: menuBar.bottom
-            anchors.fill: parent
-            anchors.margins: 10*app.dp
-            anchors.topMargin: menuBar.height+10*app.dp
+//            anchors.top: menuBar.bottom
+//            anchors.fill: parent
+//            anchors.margins: 10*app.dp
+//            anchors.topMargin: menuBar.height+10*app.dp
             ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 id: colForSnap
-                spacing:2
+                spacing:0
                 Rectangle {
                     color: "transparent"
-                    Layout.preferredHeight: app.height / 5
-                    Layout.preferredWidth: app.width / 3
+                    Layout.preferredHeight: (app.height - menuBar.height) / 4
+                    Layout.preferredWidth: app.width/2
                     ChartView {
                         id: graph_Umeas
                         visible: true
@@ -113,8 +118,8 @@ Item {
                 }
                 Rectangle {
                     color: "transparent"
-                    Layout.preferredHeight: app.height / 5
-                    Layout.preferredWidth: app.width / 3
+                    Layout.preferredHeight: (app.height - menuBar.height) / 4
+                    Layout.preferredWidth: app.width/2
                     ChartView {
                         id: graph_Uref
                         visible: true
@@ -172,8 +177,8 @@ Item {
                 }
                 Rectangle {
                     color: "transparent"
-                    Layout.preferredHeight: app.height / 5
-                    Layout.preferredWidth: app.width / 3
+                    Layout.preferredHeight: (app.height - menuBar.height) / 4
+                    Layout.preferredWidth: app.width/2
                     ChartView {
                         id: graph_Upn
                         visible: true
@@ -231,8 +236,8 @@ Item {
                 }
                 Rectangle {
                     color: "transparent"
-                    Layout.preferredHeight: app.height / 5
-                    Layout.preferredWidth: app.width / 3
+                    Layout.preferredHeight: (app.height - menuBar.height) / 4
+                    Layout.preferredWidth: app.width/2
                     ChartView {
                         id: graph_C
                         visible: true
@@ -322,9 +327,11 @@ Item {
                 Layout.alignment: Qt.AlignHCenter |Qt.AlignBottom
 
             }
-
         }
         ColumnLayout {
+            id: controlPanelLayout
+            Layout.alignment:  Qt.AlignTop
+            Layout.rightMargin: 10*app.dp
             RowLayout{
             ColumnLayout{
                 RowLayout {
@@ -414,11 +421,17 @@ Item {
                 }
                 TextField {
                     id: gasConc_tf
-                    validator: IntValidator {bottom: 0; top: 99999;}
                     text:qsTr("0")
                     placeholderText: "Conc"
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Gas conc.")
+                    validator: DoubleValidator {
+                        bottom: 0;
+                        top: 99999;
+                        decimals: 10;
+                        notation: "StandardNotation"
+
+                    }
                 }
 
             }
@@ -455,28 +468,60 @@ Item {
                     placeholderText: "Write Delay"
                 }
             }
-            Switch {
-                id: writeToFileSwitcher
-                text: qsTr("WriteModeOff")
-                onClicked: {
-                    //TODO: send a signal to reciever to switch between DEBUG/WORK mode
-                    console.log("position: " + position)
-                    if (position == 1) {
-                        if(serialNumber_tf.text.length < 2) {
-                            showPopupTips(qsTr("Enter serial number(minimum2 character)"), 1500)
-                        } else {
-                            writeToFileSwitcher.text = qsTr("WriteModeOn")
-                            reciever.enableLogging(sampleSize2_tf.text, writeDelay_tf.text)
+            RowLayout {
+                Switch {
+                    id: writeToFileSwitcher
+                    text: qsTr("WriteModeOff")
+                    onClicked: {
+                        //TODO: send a signal to reciever to switch between DEBUG/WORK mode
+                        console.log("position: " + position)
+                        if (position == 1) {
+                            if(serialNumber_tf.text.length < 2) {
+                                showPopupTips(qsTr("Enter serial number(minimum2 character)"), 1500)
+                            } else {
+                                writeToFileSwitcher.text = qsTr("WriteModeOn")
+                                reciever.enableLogging(sampleSize2_tf.text, writeDelay_tf.text)
+                            }
+                        }
+                        else {
+                            writeToFileSwitcher.text = qsTr("WriteModeOff")
+                            reciever.disableLogging();
                         }
                     }
-                    else {
-                        writeToFileSwitcher.text = qsTr("WriteModeOff")
-                        reciever.disableLogging();
+                }
+                Button {
+                    id: purifatorBtn
+                    enabled: true
+                    contentItem: ButtonLabel {text: qsTr("Reset graphs")}
+                    onClicked: {
+                        reciever.clearAllData()
                     }
                 }
             }
-        }
+            RowLayout {
+                TextField {
+                    id: setHistoryViewTf
+                    validator: DoubleValidator {
+                        bottom: 1
+                        top: 196
+                        decimals: 2
+                        notation: "StandardNotation"
+                    }
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Time axis width, max 196 hours")
+                    text:qsTr("3")
+                }
+                Button {
+                    id: setHistoryViewBtn
+                    enabled: true
+                    contentItem: ButtonLabel {text: qsTr("Set Time Axis")}
+                    onClicked: {
+                        reciever.setHistoryView(setHistoryViewTf.text)
+                    }
+                }
 
+            }
+        }
     }
     Timer {
         id: timer1

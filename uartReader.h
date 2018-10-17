@@ -51,6 +51,10 @@ public slots:
         m_flyMode = mode;
         m_nSamples = _nSamples.toInt();
     }
+    void setHistoryView(QString timeWidth){
+        m_nSecs = int(timeWidth.toDouble()*3600.0);
+    }
+    void clearAllData();
     void writeToFileOne(bool mode, QString _temp, QString _conc, QString fn1){
         m_writeToFileOne = mode;
         m_currentTemp = _temp;//.toDouble();
@@ -104,6 +108,7 @@ private:
     QVector<QtCharts::QAbstractAxis *>m_axisX;
     int m_serNumber;
     int m_nSamples;
+    int m_nSecs;
     QString m_currentTemp;
     QString m_currentConc;
     QString m_filenameOne;

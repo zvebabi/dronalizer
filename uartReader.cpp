@@ -11,9 +11,9 @@
 //#define SHOW_Debug_
 
 uartReader::uartReader(QObject *parent)
-  : QObject(parent), m_serNumber(-1), m_flyMode(false), m_writeToFileOne(false)
-  , m_enableLogging(false), isPortOpen(false), firstLine(true)
-  , serviceMode(false), deviceInSleepMode(false)
+  : QObject(parent), m_serNumber(-1), m_nSecs(3600), m_flyMode(false)
+  , m_writeToFileOne(false), m_enableLogging(false), isPortOpen(false)
+  , firstLine(true), serviceMode(false), deviceInSleepMode(false)
 {
     qRegisterMetaType<QtCharts::QAbstractSeries*>();
     qRegisterMetaType<QtCharts::QAbstractAxis*>();
@@ -170,6 +170,17 @@ void uartReader::prepareCommandToSend(QString cmd_)
     if(!deviceInSleepMode) { sendDataToDevice(); } //immediately send command
 }
 
+void uartReader::clearAllData()
+{
+    for (auto& series: m_series)
+    {
+        QtCharts::QXYSeries *xySeries =
+                static_cast<QtCharts::QXYSeries *>(series);
+        xySeries->clear();
+    }
+    allDataHere.clear();
+}
+
 void uartReader::enableLogging(QString _nSamples, QString _logDelay) {
     m_logWriteDelay = _logDelay.toInt()*1000*60; //convert min to ms
     m_nSamplesLog = _nSamples.toInt();
@@ -235,7 +246,7 @@ void uartReader::update(int graphIdx, QPointF p)
         xySeries->append(p);//replace(lines.value(series));
     }
     if(m_axisX[graphIdx]) {
-        m_axisX[graphIdx]->setMin(p.rx()-3600);
+        m_axisX[graphIdx]->setMin(p.rx()-m_nSecs);
         m_axisX[graphIdx]->setMax(p.rx());
     }
 }
